@@ -81,12 +81,19 @@ def test_real_ffmpeg_ingestion(tmp_path):
 def test_independent_calls_checkpoint_retry(monkeypatch):
     """Fake provider is ONLY a test fixture. Production has no fake-results mode."""
     from app import simulation
-    from app.schemas import Profiles, Analysis, Recommendations
+    from app.schemas import Profiles, Analysis, Recommendations, AgentDecision
     calls=[]
+    recommendation_calls=[]
     should_fail={'value':True}
     class FakeProvider:
         def __init__(self,name): self.model='test-model'
         async def json(self,schema,instruction,data,images=None):
+            if schema is AgentDecision:
+                if not data['loadedSkills']:
+                    return AgentDecision(tool='load_skill',argument='attention-review')
+                if len(data['observations'])==1:
+                    return AgentDecision(tool='inspect_evidence',argument='transcript')
+                return AgentDecision(tool='finish',argument='')
             if schema is Profiles:
                 return Profiles(personas=[dict(personaName='Viewer '+str(i),personaType=k,background='Designer',motivation='Useful ideas',skepticism='Needs evidence',viewingContext='Busy lunch break') for i,k in enumerate(data['archetypes'])])
             if schema is Analysis:
@@ -98,6 +105,11 @@ def test_independent_calls_checkpoint_retry(monkeypatch):
                 return Reaction(**reaction())
             return Recommendations(topEdits=['A','B','C'],alternativeHook='Hook',caption='Caption',cta='CTA',cover='Cover',abVariants=['A','B'],keep=['Clarity'])
     monkeypatch.setattr(simulation,'Provider',FakeProvider)
+    async def fake_recommend(provider, data, **kwargs):
+        recommendation_calls.append(data)
+        result=Recommendations(topEdits=['A','B','C'],alternativeHook='Hook',caption='Caption',cta='CTA',cover='Cover',abVariants=['A','B'],keep=['Clarity'])
+        return result, {'runtime':'test-fixture'}
+    monkeypatch.setattr(simulation,'recommend',fake_recommend)
     async def check():
         id='pipeline-test'
         store.init();store.create(id,payload())
@@ -107,10 +119,13 @@ def test_independent_calls_checkpoint_retry(monkeypatch):
         assert len(first['result']['personas'])==24
         assert len(calls)==25 and len(set(calls))==25
         assert len(first['result']['failedAgents'])==1
+        assert first['result']['responseAudit']['0']['runtime']=='skills-v1'
         should_fail['value']=False
         await execute(id,asyncio.Semaphore(3))
         final=store.get(id)
         assert final['status']=='completed'
         assert len(final['result']['personas'])==25
         assert len(calls)==26 # exactly one failed agent retried
+        await execute(id,asyncio.Semaphore(3))
+        assert len(calls)==26 and len(recommendation_calls)==2 # completed report reused
     asyncio.run(check())

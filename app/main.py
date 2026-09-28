@@ -33,7 +33,7 @@ async def lifespan(app):
     for t in tasks: t.cancel()
     await asyncio.gather(*tasks,return_exceptions=True)
 
-app = FastAPI(title='Ripple',version='2.0.0',lifespan=lifespan,docs_url=None,redoc_url=None)
+app = FastAPI(title='Ripple',version='3.0.0',lifespan=lifespan,docs_url=None,redoc_url=None)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','[::1]','testserver'])
 
 @app.middleware('http')
@@ -91,7 +91,7 @@ async def config():
             except ProviderError as exc: warnings.append(str(exc))
     if os.getenv('GROQ_TRANSCRIPTION_MODEL','').startswith('gsk_'):
         warnings.append('Your Groq key is in GROQ_TRANSCRIPTION_MODEL. Move it to GROQ_API_KEY; restore whisper-large-v3-turbo as the transcription model.')
-    return {'version':'2.0.0','providers':{k:bool(os.getenv(k.upper()+'_API_KEY','').strip()) for k in ('groq','gemini')},'defaultProvider':os.getenv('AI_PROVIDER','groq'),'ffmpeg':bool(shutil.which('ffmpeg') and shutil.which('ffprobe')),'maxUploadMB':int(os.getenv('MAX_UPLOAD_MB','100')),'maxDuration':int(os.getenv('MAX_DURATION_SECONDS','180')),'warnings':warnings,'concurrency':max(1,min(10,int(os.getenv('AGENT_CONCURRENCY','1')))),'requestInterval':float(os.getenv('REQUEST_INTERVAL_SECONDS','4'))}
+    return {'version':'3.0.0','providers':{k:bool(os.getenv(k.upper()+'_API_KEY','').strip()) for k in ('groq','gemini')},'defaultProvider':os.getenv('AI_PROVIDER','groq'),'ffmpeg':bool(shutil.which('ffmpeg') and shutil.which('ffprobe')),'maxUploadMB':int(os.getenv('MAX_UPLOAD_MB','100')),'maxDuration':int(os.getenv('MAX_DURATION_SECONDS','180')),'warnings':warnings,'concurrency':max(1,min(10,int(os.getenv('AGENT_CONCURRENCY','1')))),'requestInterval':float(os.getenv('REQUEST_INTERVAL_SECONDS','4'))}
 
 @app.post('/api/providers/{name}/check')
 async def provider_check(name: str):

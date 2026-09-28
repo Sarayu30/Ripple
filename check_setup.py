@@ -14,7 +14,10 @@ def main():
     parser.add_argument('--groq',action='store_true',help='Also query the official Groq model list (no generation).')
     args=parser.parse_args()
     from app.providers import Provider,ProviderError,model_setting
-    print('Ripple v2 setup check')
+    print('Ripple v3 setup check')
+    from app.skills import SkillRegistry
+    registry=SkillRegistry()
+    print('Reviewed agent skills:', len(registry.skills))
     print('.env found:',(ROOT/'.env').exists())
     print('ffmpeg:',bool(shutil.which('ffmpeg')))
     print('ffprobe:',bool(shutil.which('ffprobe')))

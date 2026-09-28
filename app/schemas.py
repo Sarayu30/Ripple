@@ -1,11 +1,31 @@
 from typing import Literal, Annotated
-from pydantic import BaseModel, Field, ConfigDict
+import json
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 Score = Annotated[int, Field(ge=0, le=100)]
 Text = Annotated[str, Field(max_length=3000)]
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+class AgentDecision(Strict):
+    tool: Literal['load_skill', 'inspect_evidence', 'finish']
+    argument: str = Field(max_length=100)
+
+class ToolRequest(Strict):
+    name: str = Field(min_length=1, max_length=100)
+    arguments: str = Field(max_length=20000, description='Tool arguments as a JSON object encoded as a string.')
+
+    @field_validator('arguments')
+    @classmethod
+    def object_arguments(cls, value):
+        if not isinstance(json.loads(value), dict):
+            raise ValueError('Tool arguments must encode a JSON object.')
+        return value
+
+class AgentMessage(Strict):
+    text: str = Field(max_length=20000)
+    toolCalls: list[ToolRequest] = Field(max_length=8)
 
 class TestInput(Strict):
     title: str = Field(min_length=1, max_length=120)

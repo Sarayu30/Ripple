@@ -5,3 +5,5 @@ pydantic==2.13.5
 python-multipart==0.0.32
 python-dotenv==1.2.3
 pytest==9.1.1
+deepagents==0.7.18
+PyYAML==6.0.3

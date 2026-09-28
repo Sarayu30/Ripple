@@ -10,6 +10,9 @@ from .media import extract, preview
 from .providers import Provider, ProviderError
 from .schemas import Profiles, Reaction, Analysis, Recommendations
 from .network import initial_network, spread_targets, network_summary
+from .agent_runtime import evaluate_persona
+from .deep_analysis import recommend
+from .skills import SkillRegistry
 
 ARCHETYPES = ['High-intent buyer','Curious casual scroller','Skeptical industry expert','Existing customer','Creator likely to share useful content','Budget-conscious buyer','Trend-driven viewer (Gen Z only if audience fits)','Busy decision-maker','Research-oriented evaluator','Potential advocate']
 SCORES = ['hookScore','retentionScore','clarityScore','relevanceScore','trustScore','shareIntent','saveIntent','commentIntent','clickIntent','conversionIntent','likeIntent','followIntent']
@@ -174,10 +177,16 @@ async def execute(id, semaphore):
             try:
                 async with semaphore:
                     # Independent inference context. No other viewer's reasoning or scores supplied.
-                    result=await provider.json(Reaction,'Independently evaluate the content as this viewer. Scores are subjective stated intent, not measured probabilities. State what you understood, emotion, objections, sharing rationale and a specific edit. Do not assume conversions or interest. You do not see any other agent response. The cohort label is descriptive, not an instruction to be positive or negative.',{'persona':persona,'content':compact,'analysis':analysis})
+                    def save_agent(value):
+                        checkpoint(directory, f'agent-{id}.json', value)
+                        node['agentExecution'] = {k:value[k] for k in ('runtime','phase','skills','evidence','steps')}
+                    result, execution = await evaluate_persona(
+                        provider, persona, compact, analysis,
+                        state=cached(directory, f'agent-{id}.json'), save=save_agent,
+                        emit=lambda value:event(dict(value, nodeId=id, wave=wave)))
                 r=result.model_dump();r.update(personaName=persona['personaName'],personaType=persona['personaType'])
                 responses[id]=r
-                audits[id]={'provider':payload['provider'],'model':provider.model,'at':datetime.now(timezone.utc).isoformat()}
+                audits[id]={'provider':payload['provider'],'model':provider.model,'at':datetime.now(timezone.utc).isoformat(),**execution}
                 checkpoint(directory,'responses.json',responses);checkpoint(directory,'response-audit.json',audits)
                 node.update(status='completed',reaction=r,audit=audits[id])
                 event({'kind':'reaction','nodeId':id,'wave':wave,'exposure':exposure,'parent':parent,'action':r['likelyAction'],'message':persona['personaName']+' → '+r['likelyAction']})
@@ -225,11 +234,37 @@ async def execute(id, semaphore):
         store.update(id,stage='Generating recommendations',progress=90)
         rec = None
         recommendation_error = None
+        recommendation_audit = None
         try:
             async with semaphore:
-                rec = (await provider.json(Recommendations,'Recommend three concrete prioritized edits grounded in observed content and actual persona feedback. Also supply alternative hook, caption, CTA, cover concept, two or more A/B variants, and what to keep. Do not promise uplift.', {'analysis':analysis,'metrics':outcome['metrics'],'feedback':[{'type':r['personaType'],'objection':r['objection'][:350],'edit':r['recommendedEdit'][:350],'understood':r['understood'][:250]} for r in reactions],'limitations':context['limitations']})).model_dump()
+                # Reuse a completed report only for exactly the same completed panel.
+                import hashlib
+                panel_version = hashlib.sha256(json.dumps([responses,analysis,outcome['metrics'],
+                    context['limitations'],provider.model,SkillRegistry().catalog('synthesis'),'deepagents-0.7.18'],
+                    sort_keys=True).encode()).hexdigest()
+                saved_report = cached(directory,'recommendations.json')
+                if saved_report and saved_report.get('panelVersion') == panel_version:
+                    rec = Recommendations.model_validate(saved_report['recommendations']).model_dump()
+                    recommendation_audit = saved_report['audit']
+                else:
+                    brief = {'analysis':analysis,'metrics':outcome['metrics'],
+                        'feedback':[{'id':key,'cohort':profiles[int(key)].get('audienceGroup','target'),
+                            'type':r['personaType'],'objection':r['objection'][:350],
+                            'edit':r['recommendedEdit'][:350],'understood':r['understood'][:250],
+                            'sentiment':r['sentiment'],'action':r['likelyAction']}
+                            for key,r in sorted(responses.items(),key=lambda item:int(item[0]))],
+                        'limitations':context['limitations']+analysis['limitations']}
+                    recommendation, recommendation_audit = await recommend(provider, brief,
+                        save=lambda value:checkpoint(directory,'recommendation-audit.json',value), emit=event)
+                    rec = recommendation.model_dump()
+                    checkpoint(directory,'recommendations.json',{'panelVersion':panel_version,
+                        'recommendations':rec,'audit':recommendation_audit})
         except ProviderError as exc: recommendation_error = str(exc)
+        except Exception:
+            # Do not discard valid viewer results or expose raw model/tool error bodies.
+            recommendation_error = 'Deep analysis could not finish. Persona responses are saved; resume to retry the report.'
         result = {'analysis':analysis,'outcome':outcome,'recommendations':rec,'recommendationError':recommendation_error,'personas':reactions,'profiles':profiles,'failedAgents':failures,'evidence':context['evidence'],'limitations':context['limitations']+analysis['limitations'],'source':context.get('source'),'metadata':context.get('metadata'),'provider':payload['provider'],'model':provider.model,'networkSummary':network_summary(live),'responseAudit':audits,'disclaimer':'AI-modeled estimates. Not guaranteed platform performance or real historical analytics. Synthetic personas are not representative human research.'}
+        result['recommendationAudit'] = recommendation_audit or cached(directory,'recommendation-audit.json')
         live['complete']=True
         live['summary']=network_summary(live)
         event({'kind':'complete','message':'Agent evaluation finished. Replay shows saved events, not new inference.'})
