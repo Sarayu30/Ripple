@@ -8,3 +8,8 @@ html[data-theme=light] .sidebar{background:#edeee7;border-color:#d8dcd3}html[dat
 @media(max-width:550px){.studio-context{grid-template-columns:1fr}.studio-context>div{border-right:0;border-bottom:1px solid var(--line)}.studio-run{flex-wrap:wrap}.studio-run .overline{display:none}.studio-context>div{padding:15px}.network-head{flex-direction:column}.graph-tools{width:100%}.graph-tools select{max-width:none;flex:1}.replay-controls{gap:7px}.replay-controls>span{min-width:64px;font-size:7px}.network-bottom{padding:12px}.network-legend{gap:9px;font-size:7px}.studio-tabs button{padding:10px 8px;font-size:10px}.network-summary strong{font-size:23px}.cohort-row{gap:9px}.cohort-row b{font-size:10px}.section-heading{align-items:flex-start;flex-direction:column}.cohort-row strong{font-size:18px}.sidebar .nav[data-page=settings]{display:flex}header .header-right .btn{font-size:9px;padding:5px}.audience-svg{min-height:300px}}
 
 [hidden]{display:none!important}
+
+.agent-execution{margin:22px 0;padding:16px 0;border-top:1px solid var(--line)}
+.agent-execution ol{padding-left:20px;font-size:12px;line-height:1.65}
+.agent-execution li{margin:9px 0;overflow-wrap:anywhere}
+.agent-execution li small{display:block;color:var(--muted)}
