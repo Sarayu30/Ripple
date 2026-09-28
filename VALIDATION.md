@@ -1,26 +1,53 @@
-# Ripple v2 — validation performed
+# Ripple v3 — validation performed
 
-Validation date: 2026-09-25.
+Validation date: 2026-09-28.
 
 ## Automated checks
 
-- `python -m pytest -q`: **20 passed**. One dependency deprecation warning; no failures.
-- Python module compilation and JavaScript syntax checks passed.
-- Isolated provider tests verify independent per-persona requests, partial failure reporting and resume without rerunning successful agents.
-- Real FFmpeg ingestion test generates and decodes a short video, extracts timestamped frames/audio, and verifies metadata.
-- HTTP tests cover missing credentials, secret-free configuration, URL validation, same-origin mutation protection, optional workspace password and nonpublic data paths.
-- Network tests verify response-driven propagation, exposure deduplication and exclusion of direct-test holdouts from cascade reach.
-- Provider regression tests cover configuration paste errors, strict structured requests, locally validated score bounds with corrective retries, sanitized error details, and long Retry-After resets without premature retries.
-- Legacy result/export checks verify that missing historical propagation is not invented.
+- `python -m pytest -q -k 'not real_ffmpeg_ingestion'`: **33 passed, 1 deselected**.
+  The FFmpeg ingestion test was excluded because this environment has neither
+  FFmpeg nor ffprobe. It remains in the suite for installations with those tools.
+- Python compilation, JavaScript syntax checks, and `pip check` passed.
+- Skill registry tests cover discovery, role/path boundaries, and version hashes.
+- Persona tests verify real tool dispatch, isolated context, bounded execution,
+  checkpoint resume, and reuse of successful reactions and completed reports.
+- The real Deep Agents graph runs in tests with a test-only model fixture. Checks
+  cover coordinator planning, both specialists, required evidence steps, tool/path
+  allowlists, the shared call budget, and feedback sampling across cohorts.
+- Groq/Gemini transport tests verify native functions, required tool choice,
+  Gemini thought-signature and call-ID preservation, malformed-argument retries,
+  recoverable provider parse errors, quota handling, and sanitized errors.
+- Existing API, network, privacy, schema, partial-failure, and legacy-result
+  regression checks pass. Test fixtures are never a production reaction fallback.
 
-## Browser and visual checks
+## Live provider check
 
-A local Uvicorn subprocess and Chromium were run together. Browser checks passed for the new-test form, a 100-node network, persona selection/inspector, 3D view, outside-audience filtering, replay/play/pause/scrubbing, both themes, report navigation, new-version input copying, comparison, missing-key model checks, and mobile layout at 390px width. No JavaScript errors were recorded. Screenshots were inspected for the form, light/dark network and mobile layout. Completed tests correctly hide the resume button.
+`python scripts/smoke_agents.py --env <local-env-path> --deep` completed against
+Groq using synthetic text, one synthetic viewer, and the configured real model.
+The persona loaded `credibility-review`, inspected transcript and analysis,
+and returned a validated reaction. The Deep Agents coordinator loaded its skill,
+planned, read evidence and panel feedback, and delegated to both the evidence
+reviewer and creative editor. Both specialists loaded their skills and inspected
+evidence. All 12 recorded tool calls completed. The report returned three edits.
 
-Browser data was explicitly labeled handcrafted UI fixtures, isolated outside the application data directory, and is not included in the download. The production application has no fixture/demo-score fallback.
+The successful synthesis used **15 of 24 logical model calls**, plus one final
+schema-formatting call. Provider retries can add HTTP requests. This check proves
+the real provider/tool/Deep Agents path works; it is not a full live audience
+simulation or a measurement of prediction quality. Credentials are not bundled.
+
+## Browser checks
+
+The current UI was inspected against an isolated local test database labeled
+synthetic test data. The new-test form renders without the Provider setup page.
+The persona inspector shows loaded skill versions and completed tool activity.
+The report expands to show the coordinator and both specialists' execution
+history. The narrow layout was visually inspected and no JavaScript errors were
+recorded. The temporary database and screenshots are excluded from the ZIP.
 
 ## Remaining validation limits
 
-No live Groq or Gemini inference was performed because no API key was supplied to the development environment. Account model access, provider quotas and real response quality must be checked with your own account. `check_setup.py` confirmed local FFmpeg/ffprobe availability and correctly reported missing development keys without printing secrets.
-
-Docker configuration is supplied but was not built here. Public multi-tenant operation, load capacity and empirical predictive accuracy have not been validated. This is a local implementation with production-oriented foundations; see README deployment requirements.
+Gemini's transport is covered by isolated tests but was not exercised against a
+live Gemini account. The uploaded-video FFmpeg ingestion test, Docker build,
+large live panels, and production load were not run for this upgrade. Public
+multi-tenant operation and empirical predictive accuracy remain unvalidated.
+See README for setup, evidence limits, and deployment requirements.

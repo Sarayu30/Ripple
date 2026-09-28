@@ -34,3 +34,15 @@ The recording's claims about replicating Instagram ranking are **not** adopted a
 - `FEATURE_MAP.md`
 
 Core provider, simulation, API, schema, and frontend files were updated. The database schema is unchanged.
+
+
+## V3 agent upgrade
+
+| Feature | Implementation |
+|---|---|
+| Reviewed skill registry | `skills/*/SKILL.md`, `app/skills.py`; metadata discovery, role allowlist, version hashes |
+| Independent tool loops | `app/agent_runtime.py`; model-selected skill/evidence tools, bounded budget, per-viewer checkpoints |
+| Deep report synthesis | `app/deep_analysis.py`; actual Deep Agents graph, todo planning, evidence and creative specialists |
+| Shared provider controls | `Provider.json` and `Provider.tool_call` share pacing, bounded retries and redacted errors |
+| Visible execution | Persona inspector shows skill names, versions, tool calls and evidence sources; report activity view and JSON exports include the synthesis audit |
+| Provider page removal | Settings navigation, page renderer and client model-check button removed; server `.env` and CLI retained |

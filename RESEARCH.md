@@ -17,4 +17,6 @@ Primary implementation references consulted:
 
 The propagation coefficients and confidence formula are explicitly uncalibrated product assumptions, not research-derived predictive estimates. This repository does not claim an empirically validated simulation of Instagram, TikTok, YouTube or LinkedIn ranking systems.
 
-V2 provider documentation was rechecked during implementation on 2026-09-25. The default text model and supported strict-schema adapter follow the official Groq structured-output documentation. Defaults remain configurable and model discovery is available in Provider setup. A listed model is not proof of all account permissions or capabilities.
+V2 provider documentation was rechecked during implementation on 2026-09-25. The default text model and supported strict-schema adapter follow the official Groq structured-output documentation. Defaults remain configurable and model discovery is available through `python check_setup.py --groq`. A listed model is not proof of all account permissions or capabilities.
+
+V3 agent research (2026-09-27), source links, and implementation decisions are recorded in [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).

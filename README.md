@@ -1,6 +1,21 @@
-# Ripple v2 — Audience Simulation Studio
+# Ripple v3 — Skill-based Audience Agents
 
 **Already using Ripple? Read [UPGRADE.md](UPGRADE.md) first. Keep your existing `.env` and `data` folder.**
+
+V3 replaces single-shot viewer evaluation with independent, resumable agents. Each
+agent discovers reviewed `SKILL.md` metadata, chooses a skill, reads evidence through
+an allowlisted tool, and submits a validated reaction. The inspector shows actual
+skill versions and tool activity. No frontend reaction generator exists.
+
+Report synthesis uses **LangChain Deep Agents 0.7.18**: a coordinator plans with
+`write_todos`, reads evidence, and delegates to an evidence reviewer and a creative
+editor. All three share a bounded model-call budget. The final report still passes
+Pydantic validation. Provider setup has moved out of the UI; edit `.env` and run
+`python check_setup.py --groq` when needed.
+
+See [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) for design decisions, research,
+request budgets, checkpoint behavior, and how to add reviewed skills.
+
 
 V2 adds the reference-video-inspired live network, target/outside-audience cohorts, clickable persona inspector, 2D/3D projection, playback of saved agent events, light/dark themes, private video playback, explicit provider errors, paced requests and model discovery. The original insights, recommendations, history, export and comparison remain available. See [FEATURE_MAP.md](FEATURE_MAP.md) for the reference-to-implementation mapping.
 
@@ -59,6 +74,8 @@ Open http://localhost:8000. Docker exposes the port on loopback only. The named 
 | `GROQ_TRANSCRIPTION_MODEL` | Default `whisper-large-v3-turbo` |
 | `GEMINI_API_KEY` | Optional Gemini key |
 | `GEMINI_MODEL` | Default `gemini-2.5-flash`; Gemini handles text, frame analysis and audio transcription |
+| `AGENT_MAX_TOOL_STEPS` | Tool-selection budget per persona; default 4, bounded 2–8, followed by one reaction call |
+| `DEEP_MAX_MODEL_CALLS` | Shared coordinator/specialist call budget; default 24, bounded 8–40; one final formatting call |
 | `AGENT_CONCURRENCY` | Concurrent LLM evaluations; default 1, capped at 10 |
 | `REQUEST_INTERVAL_SECONDS` | Minimum spacing between request starts, default 4 seconds; shared per provider/key in the worker |
 | `MAX_PROVIDER_ATTEMPTS` | Max attempts per structured request, default 4 |
@@ -81,15 +98,15 @@ Provider model availability changes and may differ by account. If a model is not
 7. Explore individual responses, evidence limits, edits, audience segments and cascade assumptions.
 8. Use **Test a new version** to copy audience/assumptions into a new test. Supply the edited video/transcript; then compare the two saved tests.
 
-Rough request count for a text/link test: `N + ceil(targetN/5) + ceil(outsideN/5) + 2`, before retries and any source preview. An uploaded video adds frame analysis batches and optional transcription. Running 250 personas means 250 independent evaluation calls, not one model response pretending to be 250 agents. Check your provider's current pricing and rate limits; no paid live requests were made during development.
+For a text/link test, each persona normally needs three tool-selection calls plus one reaction call (at most `AGENT_MAX_TOOL_STEPS + 1`). Add profile batches, one analysis call, and up to `DEEP_MAX_MODEL_CALLS + 1` report calls. Provider retries can multiply these counts. An uploaded video adds frame analysis batches and optional transcription. Running 250 personas means 250 independent agent runs, not one model response pretending to be 250 agents. Check your provider's current pricing and rate limits; see [VALIDATION.md](VALIDATION.md) for the current live-check results.
 
 ## How it works
 
 ```text
 Browser → FastAPI → private ingestion → evidence analysis
-        → audience profile generation → N independent model requests
+        → audience profile generation → N isolated skill/tool loops
         → validated responses → score aggregation / cluster propagation
-        → recommendations → SQLite results → dashboard / comparison
+        → Deep Agents specialist synthesis → SQLite results → dashboard / comparison
 ```
 
 - **Uploaded media:** ffprobe verifies the real video stream, duration and dimensions. FFmpeg extracts up to seven timestamped JPEG frames and mono audio. Opening, 1-second and 3-second frames are prioritized. Vision interprets on-screen text/captions and visual content; selected provider transcribes speech. The UI displays the actual sampled frames.
@@ -119,8 +136,8 @@ Replay reveals saved agent events. Its speed/slider change presentation only and
 - Calls are paced (4 seconds by default), with a shared cooldown per provider/key. Numeric/date Retry-After is honored. A reset longer than 180 seconds pauses rather than retrying early.
 - Permanent HTTP errors and exhausted 429 retries pause remaining new persona requests. Invalid JSON receives a bounded retry with field-level correction. Full successful responses are checkpointed atomically.
 - The activity feed and errors panel show provider/model/status/error code. Raw provider messages and failed-generation bodies are not displayed because they can echo private content.
-- `python check_setup.py` performs local checks without printing keys. `python check_setup.py --groq` or the Provider setup button queries Groq's official model list. It makes no generation request and cannot guarantee all account permissions/capabilities.
-- No API key was available during development, so real-provider execution and prediction quality are unverified. Tests use isolated mocks/fixtures, not a production demo fallback.
+- `python check_setup.py` performs local checks without printing keys. `python check_setup.py --groq` queries Groq's official model list. It makes no generation request and cannot guarantee all account permissions/capabilities.
+- Automated tests use isolated model fixtures, not a production demo fallback. See VALIDATION.md for live provider checks and remaining limits. Prediction quality is not empirically validated.
 
 ## What the numbers mean
 
