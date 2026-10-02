@@ -10,18 +10,19 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
 from . import store
-from .schemas import TestInput
+from .schemas import TestInput, ExperimentInput, ChatInput
 from .media import preview, source_url
 from .providers import Provider, ProviderError
 from .simulation import execute, cached
 from .network import network_summary, initial_network
 
 jobs = {}
+chat_jobs = set()
 semaphore = None
 @asynccontextmanager
 async def lifespan(app):
@@ -156,7 +157,10 @@ async def create(payload: str = Form(...), video: UploadFile | None = File(None)
         if video: await video.close()
 
 @app.get('/api/tests/{id}')
-async def get(id: str): return find(id)
+async def get(id: str):
+    row=find(id)
+    row['version']=cached(store.MEDIA/id,'experiment.json')
+    return row
 
 @app.post('/api/tests/{id}/retry')
 async def retry(id: str):
@@ -173,7 +177,7 @@ async def retry(id: str):
 @app.delete('/api/tests/{id}')
 async def delete(id: str):
     find(id)
-    if id in jobs: raise HTTPException(409,'Wait for the running test to finish before deleting.')
+    if id in jobs or id in chat_jobs: raise HTTPException(409,'Wait for the running request to finish before deleting.')
     shutil.rmtree(store.MEDIA/id,ignore_errors=True)
     store.delete(id)
     return {'deleted':True}
@@ -221,3 +225,46 @@ async def private_video(id: str):
     if not paths: raise HTTPException(404,'Video unavailable')
     path=paths[0]
     return FileResponse(path,media_type={'.mp4':'video/mp4','.mov':'video/quicktime','.webm':'video/webm'}.get(path.suffix,'application/octet-stream'))
+
+@app.post('/api/tests/{id}/versions',status_code=202)
+async def experiment(id: str, payload: ExperimentInput):
+    from .experiments import create_version
+    row=find(id)
+    if row['status'] not in ('completed','partial'): raise HTTPException(409,'Finish the original simulation first.')
+    if id in jobs or len(jobs)>=2: raise HTTPException(429,'Wait for running simulations to finish.')
+    try:
+        Provider('groq')
+        child=create_version(row,payload)
+    except (ValueError,ProviderError) as exc: raise HTTPException(422,str(exc))
+    launch(child)
+    return {'id':child}
+
+@app.get('/api/tests/{id}/compare/{other}')
+async def comparison(id: str, other: str):
+    from .experiments import compare
+    try: return compare(find(id),find(other))
+    except ValueError as exc: raise HTTPException(409,str(exc))
+
+@app.get('/api/tests/{id}/chat')
+async def conversation(id: str):
+    find(id)
+    return cached(store.MEDIA/id,'chat.json') or []
+
+@app.post('/api/tests/{id}/chat')
+async def ask(id: str,payload: ChatInput):
+    from .agents.chat import answer
+    row=find(id)
+    if not row.get('result'): raise HTTPException(409,'Complete a simulation before asking Ripple.')
+    if id in chat_jobs: raise HTTPException(409,'A reply is already being prepared for this simulation.')
+    if len(chat_jobs)>=2: raise HTTPException(429,'Two replies are already running. Try again shortly.')
+    chat_jobs.add(id)
+    try: return await answer(row,payload.message,Provider('groq'),semaphore)
+    except ProviderError as exc: raise HTTPException(502,str(exc))
+    finally: chat_jobs.discard(id)
+
+@app.get('/api/tests/{id}/report')
+async def report(id: str):
+    from .reports import creator_report
+    row=find(id)
+    if not row.get('result'): raise HTTPException(409,'A report needs saved simulation results.')
+    return Response(creator_report(row),media_type='text/markdown',headers={'Content-Disposition':f'attachment; filename="ripple-{id}-report.md"'})

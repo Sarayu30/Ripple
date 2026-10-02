@@ -1,4 +1,12 @@
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.sqlite3*
+*.sqlite*
+node_modules/
+artifacts/
 .venv/
 data/
 __pycache__/

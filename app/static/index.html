@@ -1,14 +1,16 @@
 <!doctype html> 
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ripple — Audience intelligence</title>
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="stylesheet" href="/static/studio.css">
+<link rel="stylesheet" href="/static/upgrade.css">
 <script src="/static/network.js" defer></script>
 <script src="/static/app.js" defer></script>
 <script src="/static/studio.js" defer></script>
+<script src="/static/workspace.js" defer></script>
 </head> 
 
 <body>
@@ -22,14 +24,18 @@
 </div>
 
 <div class="nav-label">WORKSPACE</div>
-<button class="nav active" data-page="new"><span>⊕</span> New simulation</button>
-<button class="nav" data-page="history"><span>▤</span> Test library <b id="historyCount">0</b></button>
+<button class="nav" data-page="studio"><span>⌂</span> Studio</button>
+<button class="nav" data-page="history"><span>▤</span> My simulations <b id="historyCount">0</b></button>
 <button class="nav" data-page="compare"><span>⇄</span> Compare versions</button>
+<button class="nav" id="askNav"><span>✧</span> Ask Ripple</button>
+<button class="nav" data-page="library"><span>▥</span> Library</button>
+<button class="nav active" data-page="new"><span>⊕</span> New simulation</button>
 
 <div class="nav-label second">UNDER THE HOOD</div>
 <button class="nav" data-page="method"><span>◉</span> Method & assumptions</button>
 
 <div class="sidebar-bottom">
+<div id="projectSelector"></div>
 <div class="private-dot">● <span>Private, local workspace</span></div>
 <p>Think before you publish.<br>Make every ripple count.</p>
 <small>RIPPLE / AUDIENCE INTELLIGENCE</small>

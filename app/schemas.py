@@ -91,3 +91,32 @@ class Recommendations(Strict):
     cover: Text
     abVariants: list[str] = Field(min_length=2, max_length=4)
     keep: list[str] = Field(min_length=1, max_length=5)
+    sources: list[str] = Field(default_factory=list, max_length=20)
+
+class InsightClaim(Strict):
+    finding: Text
+    sources: list[str] = Field(min_length=1, max_length=10)
+
+class Insights(Strict):
+    summary: Text
+    patterns: list[InsightClaim] = Field(min_length=1, max_length=8)
+    disagreements: list[InsightClaim] = Field(max_length=8)
+
+class ExperimentInput(Strict):
+    title: str = Field(min_length=1, max_length=120)
+    hook: str | None = Field(default=None, max_length=3000)
+    caption: str | None = Field(default=None, max_length=5000)
+    cta: str | None = Field(default=None, max_length=500)
+    audience: str | None = Field(default=None, min_length=10, max_length=2000)
+    variation: str | None = Field(default=None, max_length=5000)
+    approved: Literal[True]
+
+class ChatInput(Strict):
+    message: str = Field(min_length=1, max_length=2000)
+
+class ToolPlan(Strict):
+    tools: list[Literal['simulation_results','audience_analytics','segment_comparison','version_comparison','content_evidence','recommendations']] = Field(min_length=1,max_length=4)
+
+class ChatAnswer(Strict):
+    answer: str = Field(min_length=1,max_length=6000)
+    sources: list[str] = Field(min_length=1,max_length=20)

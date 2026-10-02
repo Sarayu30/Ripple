@@ -1,0 +1,59 @@
+﻿let drawerOrigin=null;
+function openDrawer(title,content){
+ closeDrawer();drawerOrigin=document.activeElement;const dialog=document.createElement('dialog');dialog.className='drawer';dialog.id='workspaceDrawer';dialog.setAttribute('aria-label',title);
+ dialog.innerHTML='<div class="drawer-heading"><h2>'+esc(title)+'</h2><button class="btn" id="closeDrawer" aria-label="Close panel">×</button></div><div class="drawer-body">'+content+'</div>';
+ document.body.append(dialog);dialog.showModal();$('#closeDrawer').onclick=closeDrawer;dialog.addEventListener('cancel',e=>{e.preventDefault();closeDrawer()});
+}
+function closeDrawer(){const d=$('#workspaceDrawer');if(d){d.close();d.remove();drawerOrigin?.focus()}}
+function openSuggestions(){
+ const r=current?.result;if(!r)return;
+ openDrawer('Suggestions for your next version',(r.recommendations?r.recommendations.topEdits.map((x,i)=>diagnostic('0'+(i+1)+' · Priority edit',x)).join('')+diagnostic('Alternative hook',r.recommendations.alternativeHook)+diagnostic('Caption',r.recommendations.caption)+diagnostic('CTA',r.recommendations.cta)+diagnostic('Evidence references',(r.recommendations.sources||[]).join(', ')):'<p class="sub">Suggestions are unavailable. Resume this partial run to retry.</p>')+(r.insights?.patterns||[]).map(p=>diagnostic(p.finding,'Sources: '+p.sources.join(', '))).join('')+'<button class="btn primary section-gap" id="suggestExperiment">Test an edit →</button>');
+ $('#suggestExperiment').onclick=()=>openExperiment(current.id);
+}
+async function updateProjectSelector(){
+ const host=$('#projectSelector');if(!host)return;
+ try{await refresh();if(!current){host.innerHTML='';return}const version=current.version;host.innerHTML='<div class="project-box"><small>CURRENT PROJECT</small><b>'+esc(current.title)+'</b><label><span class="help">Saved simulation / version</span><select id="projectVersion">'+history.map(t=>'<option value="'+t.id+'" '+(t.id===current.id?'selected':'')+'>'+esc(t.title)+'</option>').join('')+'</select></label><button class="btn full section-gap" id="projectNew">＋ Add new version</button></div>';$('#projectVersion').onchange=e=>openTest(e.target.value);$('#projectNew').onclick=()=>openExperiment(current.id)}catch(e){toast(e.message)}
+}
+function renderStudioHome(){
+ if(current){openTest(current.id);return}
+ if(history.length){openTest(history[0].id);return}
+ $('#main').innerHTML=heading('','Studio','Understand how different people might react to your content.')+'<section class="card empty-studio">'+orbit()+'<h2>Find your audience. Refine your next post.</h2><p>Understand who connects with your content, why others scroll, and what to change before you publish.</p><button class="btn primary" id="firstSimulation">Run your first simulation →</button><p class="help">Your results will appear here. No sample scores or invented viewers.</p></section>';$('#firstSimulation').onclick=()=>navigate('new');
+}
+async function openChat(){
+ let row=current;if(!row?.result){const t=history.find(t=>['completed','partial'].includes(t.status));if(t)row=await api('/tests/'+t.id)}
+ if(!row?.result){openDrawer('Ask Ripple','<p class="sub">Complete a simulation first. Ripple will answer using your saved audience reactions and content evidence.</p><button class="btn primary section-gap" id="chatStart">New simulation</button>');$('#chatStart').onclick=()=>{closeDrawer();navigate('new')};return}
+ const id=row.id;
+ openDrawer('Ask Ripple','<p class="sub">'+esc(row.title)+'</p><p class="help">Answers use this simulation. Suggestions do not change your content.</p><div id="chatLog" class="chat-log" aria-live="polite"></div><div class="chat-prompts">'+['Why are viewers scrolling?','Give me three alternative hooks.','Which segment reacts differently?'].map(x=>'<button class="btn" data-question="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div><form id="chatForm"><label class="field"><span>Your question</span><textarea id="chatQuestion" required maxlength="2000" placeholder="What should I change before publishing?"></textarea></label><button class="btn primary" type="submit">Ask Ripple →</button><p id="chatError" role="alert" class="help"></p></form>');
+ const form=$('#chatForm'),log=$('#chatLog'),question=$('#chatQuestion'),error=$('#chatError');
+ const add=m=>{log.insertAdjacentHTML('beforeend','<div class="chat-message '+(m.role==='user'?'user':'')+'">'+esc(m.text)+'</div>'+(m.sources?'<div class="chat-sources">Sources: '+esc(m.sources.join(', '))+'</div>':''));log.scrollTop=log.scrollHeight};
+ form.querySelector('button').disabled=true;
+ try{(await api('/tests/'+id+'/chat')).forEach(add)}catch(e){error.textContent=e.message}finally{form.querySelector('button').disabled=false}
+ document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>{question.value=b.dataset.question;question.focus()});
+ form.onsubmit=async e=>{e.preventDefault();const q=question.value.trim();if(!q)return;const b=form.querySelector('button');b.disabled=true;b.textContent='Reading your simulation…';error.textContent='';try{const response=await api('/tests/'+id+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q})});add({role:'user',text:q});add({role:'assistant',text:response.answer,sources:response.sources});question.value=''}catch(e){error.textContent=e.message}finally{b.disabled=false;b.textContent='Ask Ripple →'}};
+}
+async function openExperiment(id){
+ try{
+ const row=await api('/tests/'+id);if(!row.result){toast('Complete this simulation before creating a what-if version.');return}
+ openDrawer('What if you changed…','<div class="experiment-note">Original: '+esc(row.title)+'<br>Keep the audience unchanged to reuse the same personas. Edits are hypothetical descriptions; original media stays unchanged. A new simulation sends revised context to Groq.</div><form id="experimentForm">'+field('title','Version name','',true)+field('hook','Opening hook','Leave empty to retain the original',true,'textarea')+field('caption','Caption','',true,'textarea')+field('cta','Call to action','',true)+field('audience','Target audience','',true,'textarea')+field('variation','Video opening / content variation','Describe the change you want to test',true,'textarea')+'<label class="consent"><input type="checkbox" name="approved" required><span>I approve creating this version and running a new Groq simulation using these changes.</span></label><p id="experimentError" role="alert" class="help"></p><button class="btn primary" type="submit">Run revised simulation →</button></form>');
+ const f=$('#experimentForm');f.elements.namedItem('title').value=(row.title+' · Revision').slice(0,120);f.elements.namedItem('title').required=true;f.elements.namedItem('title').maxLength=120;
+ for(const k of ['caption','cta','audience'])f.elements[k].value=row.payload[k]||'';
+ f.onsubmit=async e=>{e.preventDefault();const b=f.querySelector('[type=submit]');b.disabled=true;const payload={title:f.elements.namedItem('title').value,approved:f.approved.checked};for(const k of ['caption','cta','audience'])if(f.elements[k].value!==row.payload[k])payload[k]=f.elements[k].value;for(const k of ['hook','variation'])if(f.elements[k].value.trim())payload[k]=f.elements[k].value.trim();try{const result=await api('/tests/'+id+'/versions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});closeDrawer();await openTest(result.id)}catch(e){$('#experimentError').textContent=e.message;b.disabled=false}};
+ }catch(e){toast(e.message)}
+}
+function renderVersionCompare(){
+ const completed=history.filter(t=>['completed','partial'].includes(t.status));
+ $('#main').innerHTML=heading('','Compare versions','Test a change. Compare real reactions, objections, and recommendations.')+(completed.length?'<section class="card"><div class="fields">'+['a','b'].map((id,i)=>'<label class="field"><span>'+(i?'Revised version':'Original version')+'</span><select id="compare-'+id+'">'+completed.map((t,j)=>'<option value="'+t.id+'" '+(j===i?'selected':'')+'>'+esc(t.title)+'</option>').join('')+'</select></label>').join('')+'</div><div class="actions section-gap"><button class="btn primary" id="compareButton" '+(completed.length<2?'disabled':'')+'>Compare saved results</button><button class="btn" id="createExperiment">Create a what-if version →</button></div></section><div id="comparison"></div>':'<div class="empty"><h2>Your next experiment starts with a baseline.</h2><p>Complete a simulation, then test a different hook, caption, CTA or audience.</p><button class="btn primary" id="compareStart">Run simulation</button></div>');
+ if($('#compareStart'))$('#compareStart').onclick=()=>navigate('new');
+ if(!completed.length)return;
+ $('#createExperiment').onclick=()=>openExperiment($('#compare-a').value);
+ $('#compareButton').onclick=async()=>{
+ const button=$('#compareButton');button.disabled=true;
+ try{const a=$('#compare-a').value,b=$('#compare-b').value;if(a===b)throw Error('Choose two different versions.');const d=await api('/tests/'+a+'/compare/'+b);
+ $('#comparison').innerHTML='<div class="warning">'+(d.sharedPersonas?'The same synthetic personas were used. ':'Different persona panels were used. ')+esc(d.assumptionDifferences.length?'Changed assumptions: '+d.assumptionDifferences.join(', ')+'. ':'')+'Differences may reflect model variability; this is not a human A/B test.</div><section class="card table-scroll"><h2>Revised − original</h2><table><thead><tr><th>Metric</th><th>Change (points)</th></tr></thead><tbody>'+Object.entries(d.metricDeltas).map(([k,v])=>'<tr><td>'+esc(labels[k]||k)+'</td><td>'+(v>0?'+':'')+v+'</td></tr>').join('')+'</tbody></table></section><section class="card"><h2>Segment differences</h2>'+d.segments.map(s=>diagnostic(s.name,'Share-intent change: '+(s.shareDelta??'Not comparable')+' points. Original: '+(s.original?.dominantReaction||'unavailable')+'; revised: '+(s.revised?.dominantReaction||'unavailable'))).join('')+'</section><div class="result-grid">'+['original','revised'].map(k=>'<section class="card"><h2>'+k[0].toUpperCase()+k.slice(1)+'</h2>'+diagnostic('Top recommendation',d.recommendations[k]?.topEdits?.[0]||'Unavailable')+diagnostic('Alternative hook',d.recommendations[k]?.alternativeHook||'Unavailable')+'<h3 class="section-gap">Objections</h3>'+d.objections[k].map(x=>diagnostic(x.count+' viewer(s)',x.text)).join('')+'</section>').join('')+'</div><section class="card"><h2>Evidence & assumptions</h2>'+d.limitations.map(x=>'<p class="sub">'+esc(x)+'</p>').join('')+'<div class="actions section-gap"><button class="btn" data-open="'+a+'">Original evidence</button><button class="btn" data-open="'+b+'">Revised evidence</button><a class="btn" href="/api/tests/'+b+'/report">Download revised report</a></div></section>';bindOpen();
+ }catch(e){toast(e.message)}finally{button.disabled=false}};
+}
+async function renderLibrary(){
+ const saved=await Promise.all(history.filter(t=>['completed','partial'].includes(t.status)).map(t=>api('/tests/'+t.id)));
+ $('#main').innerHTML=heading('','Library','Your saved creative directions and creator-ready reports.')+(saved.length?'<div class="library-grid">'+saved.map(t=>'<section class="card"><h2>'+esc(t.title)+'</h2>'+diagnostic('Alternative hook',t.result?.recommendations?.alternativeHook||'No recommendation saved')+'<div class="actions section-gap"><button class="btn" data-open="'+t.id+'">Open Studio</button><a class="btn" href="/api/tests/'+t.id+'/report">Export report</a></div></section>').join('')+'</div>':'<div class="empty">Your completed simulations and suggestions will appear here.</div>');bindOpen();
+}
+$('#askNav').onclick=()=>openChat().catch(e=>toast(e.message));

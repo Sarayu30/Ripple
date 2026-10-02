@@ -81,7 +81,7 @@ def test_real_ffmpeg_ingestion(tmp_path):
 def test_independent_calls_checkpoint_retry(monkeypatch):
     """Fake provider is ONLY a test fixture. Production has no fake-results mode."""
     from app import simulation
-    from app.schemas import Profiles, Analysis, Recommendations
+    from app.schemas import Profiles, Analysis, Recommendations, Insights
     calls=[]
     should_fail={'value':True}
     class FakeProvider:
@@ -96,7 +96,9 @@ def test_independent_calls_checkpoint_retry(monkeypatch):
                 name=data['persona']['personaName'];calls.append(name)
                 if should_fail['value'] and name.startswith('025'): raise ProviderError('Test quota failure')
                 return Reaction(**reaction())
-            return Recommendations(topEdits=['A','B','C'],alternativeHook='Hook',caption='Caption',cta='CTA',cover='Cover',abVariants=['A','B'],keep=['Clarity'])
+            if schema is Insights:
+                return Insights(summary='Proof is needed',patterns=[{'finding':'Viewers need proof','sources':['viewer:0']}],disagreements=[])
+            return Recommendations(topEdits=['A','B','C'],alternativeHook='Hook',caption='Caption',cta='CTA',cover='Cover',abVariants=['A','B'],keep=['Clarity'],sources=['viewer:0'])
     monkeypatch.setattr(simulation,'Provider',FakeProvider)
     async def check():
         id='pipeline-test'
