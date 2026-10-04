@@ -121,3 +121,31 @@ def test_legacy_results_can_open_and_export_without_inventing_cascade():
         assert live['summary']['completed']==1
         assert client.get('/api/tests/'+id+'/export').json()['liveNetwork']['legacy']
         assert client.get('/api/tests/'+id+'/video').status_code==404
+
+
+def test_strict_schema_failure_falls_back_but_still_validates(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','gsk_test_only')
+    monkeypatch.setenv('GROQ_MODEL','openai/gpt-oss-20b')
+    monkeypatch.setenv('REQUEST_INTERVAL_SECONDS','0')
+    monkeypatch.setenv('MAX_PROVIDER_ATTEMPTS','3')
+    bodies=[]
+    class Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self,*args): pass
+        async def post(self,url,**kwargs):
+            bodies.append(kwargs['json'])
+            if len(bodies)==1: return httpx.Response(400,json={'error':{'code':'json_validate_failed','failed_generation':'PRIVATE CONTENT'}})
+            value=reaction()
+            if len(bodies)==2: value['clarityScore']=101
+            return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(value)}}]})
+    monkeypatch.setattr('app.providers.httpx.AsyncClient',lambda **kwargs:Client())
+    monkeypatch.setattr('app.providers.asyncio.sleep',AsyncMock())
+    async def check():
+        provider=Provider();value=await provider.json(Reaction,'Evaluate',{})
+        assert value.clarityScore==65
+        await provider.json(Reaction,'Evaluate again',{})
+    asyncio.run(check())
+    assert bodies[0]['response_format']['type']=='json_schema'
+    assert all(b['response_format']['type']=='json_object' for b in bodies[1:])
+    assert 'clarityScore' in bodies[2]['messages'][0]['content']
+    assert 'PRIVATE CONTENT' not in json.dumps(bodies)
