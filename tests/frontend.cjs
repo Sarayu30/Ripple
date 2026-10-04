@@ -1,0 +1,60 @@
+﻿/* DOM integration checks. Test fixtures never enter the production database. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const {JSDOM}=require('../artifacts/ui-check/node_modules/jsdom');
+const html=fs.readFileSync('app/static/index.html','utf8');
+const dom=new JSDOM(html,{url:'http://localhost:8000',runScripts:'outside-only'});
+const w=dom.window;
+w.HTMLDialogElement.prototype.showModal=function(){this.open=true};
+w.HTMLDialogElement.prototype.close=function(){this.open=false};
+const profile={personaName:'001 · Test viewer',personaType:'Designer',background:'Independent designer',motivation:'Save time',skepticism:'Needs evidence',viewingContext:'Lunch',audienceGroup:'target'};
+const reaction={personaName:profile.personaName,personaType:profile.personaType,clarityScore:80,likelyAction:'share',wouldStop:true,sentiment:'positive',reaction:'Useful checklist',objection:'Needs proof',recommendedEdit:'Show an example'};
+const result={analysis:{summary:'Checklist',limitations:[]},outcome:{metrics:{clarityScore:80},segments:[{name:'Designer',count:1,relevance:80,share:70,dominantReaction:'share',insight:'Needs proof'}],assumptions:{waveDecay:0.65},confidence:50},recommendations:{topEdits:['Show an example','Clarify benefit','Add CTA'],alternativeHook:'See the result',caption:'Try this',cta:'Save',sources:['viewer:0']},insights:{summary:'Proof would help',patterns:[{finding:'Needs proof',sources:['viewer:0']}]},personas:[reaction],profiles:[profile],evidence:{transcript:true},limitations:['Synthetic'],provenance:[{id:'viewer:0',kind:'synthetic reaction',description:'Needs proof'}]};
+const payload={title:'Test content',audience:'Independent designers',angle:'Useful checklist',goal:'engagement',platform:'Instagram',sourceType:'link',size:25,caption:'Checklist',cta:'Save'};
+const row={id:'one',title:'Test content',status:'completed',stage:'Complete',progress:100,payload,result};
+const live={nodes:[{id:'0',profile,cohort:'target',status:'completed',reaction,x:.4,y:.4},{id:'1',profile:{...profile,personaName:'002 · Adjacent'},cohort:'outside',status:'completed',reaction:{...reaction,likelyAction:'scroll'},x:.7,y:.6}],links:[{source:'0',target:'1'}],events:[],summary:{}};
+let listing=[],submissions=[];
+w.fetch=async(url,opts={})=>{
+ const route=String(url).replace('/api','');let body;
+ if(route==='/config')body={providers:{groq:true},maxUploadMB:100,maxDuration:180};
+ else if(route==='/tests'){if(opts.method==='POST'){submissions.push(JSON.parse(opts.body.get('payload')));body={id:'new-test'}}else body=listing;}
+ else if(route.endsWith('/live'))body=live;
+ else if(route.endsWith('/versions')){if(opts.method==='POST'){submissions.push(JSON.parse(opts.body));body={id:'two'}}else body=listing;}
+ else if(route.endsWith('/chat'))body=opts.method==='POST'?{answer:'Show proof.',sources:['viewer:0'],tools:['simulation_results']}:[];
+ else if(route.includes('/compare/'))body={sharedPersonas:true,assumptionDifferences:[],metricDeltas:{clarityScore:0},segments:[],recommendations:{original:result.recommendations,revised:result.recommendations},objections:{original:[],revised:[]},limitations:['Synthetic comparison']};
+ else if(route.startsWith('/tests/'))body={...row,id:route.split('/')[2]};
+ else throw Error('Unmocked route '+route);
+ return {ok:true,json:async()=>structuredClone(body)};
+};
+for(const file of ['network.js','app.js','studio.js','workspace.js'])vm.runInContext(fs.readFileSync('app/static/'+file,'utf8'),dom.getInternalVMContext(),{filename:file});
+const tick=()=>new Promise(r=>setTimeout(r,20));
+(async()=>{
+ await tick();assert(w.document.querySelector('#firstSimulation'),'Empty Studio must have a working start action');
+ await w.navigate('new');const newForm=w.document.querySelector('#testForm');w.document.querySelector('[data-source="link"]').click();assert.equal(newForm.elements.namedItem('sourceType').value,'link');assert(!w.document.querySelector('#linkArea').classList.contains('hidden'));
+ listing=[row,{...row,id:'two',title:'Revision'}];await w.openTest('one');await tick();
+ assert.equal(w.document.querySelectorAll('.studio-kpi').length,3);
+ assert.equal(w.document.querySelectorAll('.agent-node rect').length,0);
+ assert.equal(w.document.querySelectorAll('.agent-node').length,2);
+ w.document.querySelector('[data-node="0"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
+ assert(w.document.querySelector('#agentInspector').textContent.includes('Needs proof'));
+ w.document.querySelector('[data-inspector-tab="connections"]').click();
+ assert.equal(w.document.querySelectorAll('.connection-row').length,1);
+ w.document.querySelector('.connection-row').click();
+ assert(w.document.querySelector('#agentInspector').textContent.includes('Adjacent'));
+ await w.document.querySelector('#loadVersions').onclick();assert(w.document.querySelector('#workspaceDrawer').textContent.includes('Revision'));w.closeDrawer();
+ w.openSuggestions();assert(w.document.querySelector('#workspaceDrawer').textContent.includes('Show an example'));w.closeDrawer();
+ await w.openChat();w.document.querySelector('#chatQuestion').value='Why scroll?';
+ await w.document.querySelector('#chatForm').onsubmit({preventDefault(){}});
+ assert(w.document.querySelector('#chatLog').textContent.includes('Show proof.'));
+ w.closeDrawer();
+ await w.openExperiment('one');const f=w.document.querySelector('#experimentForm');
+ assert(f);f.elements.namedItem('hook').value='Start with the result';f.elements.namedItem('approved').checked=true;
+ await f.onsubmit({preventDefault(){}});assert.equal(submissions.length,1);assert.equal(submissions[0].hook,'Start with the result');assert.equal(submissions[0].audience,undefined);
+ await w.navigate('compare');assert(w.document.querySelector('#compareButton'));
+ await w.document.querySelector('#compareButton').onclick();assert(w.document.querySelector('#comparison').textContent.includes('Message clarity'));
+ await w.navigate('library');assert(w.document.querySelector('.library-grid'));
+ await w.navigate('history');assert.equal(w.document.querySelectorAll('.history-item').length,2);
+ console.log('PASS: empty state, three KPIs, circular graph, inspector tabs/connections, suggestions, grounded chat, approved experiment, comparison, library, history.');
+ dom.window.close();
+})().catch(e=>{console.error(e);dom.window.close();process.exitCode=1});
