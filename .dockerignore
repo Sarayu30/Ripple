@@ -1,4 +1,13 @@
 .env
+.env.*
+!.env.example
+.aws
+.codex
+.agents
+artifacts
+node_modules
+*.key
+*.pem
 .venv
 data
 __pycache__

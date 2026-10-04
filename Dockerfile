@@ -4,6 +4,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
+COPY skills ./skills
 RUN useradd --create-home ripple && mkdir /app/data && chown ripple:ripple /app/data
 USER ripple
 EXPOSE 8000
