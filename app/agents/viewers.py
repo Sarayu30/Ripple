@@ -1,4 +1,12 @@
-from ..simulation import *
+import asyncio
+import os
+from collections import Counter
+from datetime import datetime, timezone
+from .. import store
+from ..simulation import cached, checkpoint
+from ..schemas import Reaction
+from ..providers import ProviderError
+from ..network import initial_network, spread_targets, network_summary
 from .skills import instruction
 
 async def run(state, runtime):
@@ -51,7 +59,7 @@ async def run(state, runtime):
             failures[id]=exc.details();node.update(status='failed',error=exc.details())
             checkpoint(directory,'failures.json',failures)
             event({'kind':'failure','nodeId':id,'wave':wave,'message':str(exc),'code':exc.code})
-            if exc.fatal or exc.status==429: abort.set()
+            if exc.fatal or exc.status==429 or (exc.status==400 and sum(f.get('status')==400 for f in failures.values())>=3): abort.set()
         store.update(id=row['id'],progress=25+round(55*len(responses)/payload['size']),stage=f'Collecting viewer reactions · {len(responses)} / {payload["size"]} complete')
     async def batch(items,wave,exposure):
         queue=asyncio.Queue()

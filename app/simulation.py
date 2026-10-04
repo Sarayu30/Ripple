@@ -1,15 +1,8 @@
 """Independent LLM judgments + explicit, uncalibrated propagation model."""
-import asyncio
 import json
-import os
-from datetime import datetime, timezone
 from collections import Counter, defaultdict
 from statistics import mean, pstdev
-from . import store
-from .media import extract, preview
-from .providers import Provider, ProviderError
-from .schemas import Profiles, Reaction, Analysis, Recommendations
-from .network import initial_network, spread_targets, network_summary
+from .providers import Provider
 
 ARCHETYPES = ['High-intent buyer','Curious casual scroller','Skeptical industry expert','Existing customer','Creator likely to share useful content','Budget-conscious buyer','Trend-driven viewer (Gen Z only if audience fits)','Busy decision-maker','Research-oriented evaluator','Potential advocate']
 SCORES = ['hookScore','retentionScore','clarityScore','relevanceScore','trustScore','shareIntent','saveIntent','commentIntent','clickIntent','conversionIntent','likeIntent','followIntent']

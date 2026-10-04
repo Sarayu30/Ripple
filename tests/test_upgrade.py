@@ -76,6 +76,10 @@ def test_versions_invalidate_only_affected_work(monkeypatch):
     FixtureProvider.calls=[];asyncio.run(simulation.execute(audience,asyncio.Semaphore(2)))
     assert not any(x[0]=='Analysis' for x in FixtureProvider.calls)
     assert any(x[0]=='Profiles' for x in FixtureProvider.calls)
+    with TestClient(app) as client:
+        versions=client.get('/api/tests/'+child+'/versions').json()
+        assert {v['id'] for v in versions}=={id,child,audience}
+        assert client.get('/api/tests/'+child+'/export').json()['version']['parentId']==id
 
 def test_chat_uses_scoped_tools_and_persists_followups(monkeypatch):
     id=setup_run(monkeypatch);asyncio.run(simulation.execute(id,asyncio.Semaphore(2)))
@@ -96,6 +100,19 @@ def test_unknown_evidence_rejected():
     with pytest.raises(ProviderError): validate_sources(['made-up'],[{'id':'analysis'}])
     with pytest.raises(ValueError): instruction('../../.env')
     assert len(catalog())==6
+
+
+def test_chat_bounds_large_tools_and_long_followup_history(monkeypatch):
+    from app.agents import chat
+    id=setup_run(monkeypatch)
+    asyncio.run(simulation.execute(id,asyncio.Semaphore(1)))
+    simulation.checkpoint(store.MEDIA/id,'chat.json',[{'role':'user' if i%2==0 else 'assistant','text':'x'*4000} for i in range(20)])
+    monkeypatch.setattr(chat,'retrieve',lambda name,row:{'longResult':'x'*50000})
+    asyncio.run(answer(store.get(id),'Summarize the evidence',FixtureProvider(),asyncio.Semaphore(1)))
+    context=next(data for kind,data in reversed(FixtureProvider.calls) if kind=='ChatAnswer')
+    assert sum(len(m['text']) for m in context['history'])<=3000
+    assert sum(len(v['excerpt']) for v in context['retrieved'].values())<=10000
+    assert all(v['truncated'] for v in context['retrieved'].values())
 
 def test_upgrade_api_contracts_and_approval(monkeypatch):
     id=setup_run(monkeypatch);asyncio.run(simulation.execute(id,asyncio.Semaphore(1)))

@@ -88,7 +88,9 @@ async def execute_graph(id,semaphore,provider_factory):
                 if snapshot.values.get('failures'):
                     for name in ('insights.json','recommendations.json'):
                         (directory/name).unlink(missing_ok=True)
-                await graph.ainvoke({'row':store.get(id),'completed':False},config)
+                row=store.get(id)
+                input_row={key:row[key] for key in ('id','title','created','payload')}
+                await graph.ainvoke({'row':input_row,'completed':False},config)
     except asyncio.CancelledError:
         store.update(id,status='interrupted',error='Server stopped. Resume to use the saved workflow checkpoint.')
         raise

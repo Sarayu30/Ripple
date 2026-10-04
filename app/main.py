@@ -194,6 +194,7 @@ async def frame(id: str,name: str):
 @app.get('/api/tests/{id}/export')
 async def export(id: str):
     row=find(id)
+    row['version']=cached(store.MEDIA/id,'experiment.json')
     row['liveNetwork']=await live_test(id)
     return JSONResponse(row,headers={'Content-Disposition':f'attachment; filename="ripple-{id}.json"'})
 
@@ -244,6 +245,18 @@ async def comparison(id: str, other: str):
     from .experiments import compare
     try: return compare(find(id),find(other))
     except ValueError as exc: raise HTTPException(409,str(exc))
+
+@app.get('/api/tests/{id}/versions')
+async def version_history(id: str):
+    row=find(id)
+    version=cached(store.MEDIA/id,'experiment.json') or {}
+    root=version.get('rootId',id)
+    versions=[]
+    for candidate in store.listing():
+        metadata=cached(store.MEDIA/candidate['id'],'experiment.json') or {}
+        if candidate['id']==root or metadata.get('rootId')==root:
+            versions.append(dict(candidate,parentId=metadata.get('parentId')))
+    return versions
 
 @app.get('/api/tests/{id}/chat')
 async def conversation(id: str):

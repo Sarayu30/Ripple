@@ -1,4 +1,9 @@
-from ..simulation import *
+import re
+from .. import store
+from ..simulation import cached, checkpoint, ARCHETYPES
+from ..schemas import Profiles
+from ..providers import ProviderError
+from ..network import initial_network
 from .skills import instruction
 
 async def run(state, runtime):
@@ -18,7 +23,8 @@ async def run(state, runtime):
         if len(batch.personas)!=count: raise ProviderError('Persona generation returned the wrong count. Retry uses saved profiles.',code='persona_count')
         for p in batch.personas:
             value=p.model_dump()
-            value['personaName']=f'{len(profiles)+1:03d} · {value["personaName"]}'
+            name=re.sub(r'^\d+\s*[·.\-]\s*','',value['personaName'])
+            value['personaName']=f'{len(profiles)+1:03d} · {name}'
             value['personaType']=ARCHETYPES[len(profiles)%len(ARCHETYPES)]
             value['audienceGroup']=group
             profiles.append(value)
