@@ -12,6 +12,24 @@ TOOL_DESCRIPTIONS={
     'recommendations':'Saved creative suggestions and their source IDs.'
 }
 
+def simulation_evidence(row):
+    """Read-time source compatibility for runs predating provenance catalogs.
+
+    Viewer IDs use retrieve()'s result ordering. No stored results are rewritten
+    and no new observations are invented.
+    """
+    result=row['result']
+    evidence={item['id']:item for item in result.get('provenance') or []}
+    if result.get('analysis'):
+        evidence.setdefault('analysis',{'id':'analysis','kind':'AI interpretation','description':'Saved content analysis'})
+    if result.get('outcome'):
+        evidence.setdefault('propagation',{'id':'propagation','kind':'mathematical assumptions','description':'Saved outcome and assumptions'})
+    for index,viewer in enumerate(result.get('personas') or []):
+        source=f'viewer:{index}'
+        evidence.setdefault(source,{'id':source,'kind':'synthetic reaction','description':'Saved reaction from '+viewer['personaName']})
+    return list(evidence.values())
+
+
 def retrieve(name,row):
     if name not in TOOL_DESCRIPTIONS: raise ValueError('Tool is not permitted.')
     r=row['result'];directory=store.MEDIA/row['id']
