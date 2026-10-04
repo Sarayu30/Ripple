@@ -4,7 +4,7 @@ Updated: 2026-10-04.
 
 ## Automated verification
 
-- Python regression suite: 26 tests passed; the additional oversized-chat-context regression also passed in the six-test upgrade suite (27 unique tests verified).
+- Python regression suite: 30 tests passed, including legacy chat citations, automatic citation repair, bounded context and preservation of conversation history after failed verification.
 - Tests cover actual LangGraph execution and persistent checkpoint recovery using isolated fixture providers, independent viewer calls, partial recovery without duplicate evaluations, approved child versions, selective cache reuse, comparison, lineage exports, source-ID validation, persistent chat and bounded retrieval/history.
 - Original HTTP/privacy, malformed schema, provider cooldown, network propagation and legacy-result tests still pass.
 - Real FFmpeg ingestion generated a video and verified decoded metadata, sampled frames and extracted audio.
@@ -26,6 +26,12 @@ An isolated test with generic design-workflow content completed through the real
 This was text/transcript-based integration testing. Real-provider frame vision and real audio transcription were not separately exercised; local FFmpeg ingestion was.
 
 ## Browser/visual limits
+
+### Ask Ripple legacy-citation fix
+
+A pre-upgrade simulation had 25 saved viewer reactions and no provenance catalog. Retrieval exposed `viewer:N` references, but the old chat validator did not recognize them. The read-time compatibility adapter now registers those actual saved reactions using the same ordering as retrieval; it does not change simulation results or invent observations. Invalid model citations trigger one bounded corrective retry, and only verified replies enter conversation history. Tool references are limited to tools used for that answer.
+
+After restarting the local server, the live HTTP chat endpoint answered “Why are viewers scrolling?” against that existing simulation with 11 valid source references. No simulation rerun was required.
 
 No browser surface was connected to this session. The browser inventory returned no available browsers, so the redesigned layout was not screenshot-reviewed and real-browser fullscreen, mobile rendering and visual accessibility remain unverified. DOM integration and JavaScript checks passed; they do not replace rendered-browser QA.
 

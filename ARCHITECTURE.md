@@ -42,6 +42,8 @@ Provenance separates timestamped video source frames, transcript-derived data, c
 
 Insight claims, recommendations and chat outputs use existing source IDs. Validation checks reference existence, not semantic truth; LLM interpretations can still be mistaken. The UI and report expose limitations. Percent metrics are explicitly defined panel summaries, not calibration claims.
 
+For legacy results without provenance catalogs, chat resolves source IDs from actual stored analysis, outcomes and viewer reactions using the same ordering as retrieval. This adapter is read-only. Chat permits tool citations only for selected tools and regenerates an answer once if source validation fails. Persisted conversation history contains only verified replies.
+
 ## Skills and tools
 
 Six SKILL.md documents define inputs, invocation, instructions, tools, output schemas, evidence requirements and validation. Groq prompts load these documents; they are not unused documentation. The deterministic propagation node loads its skill and enforces arithmetic in code.
