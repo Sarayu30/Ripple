@@ -47,6 +47,10 @@ const server=http.createServer((req,res)=>{
  assert.equal(await page.locator('.art-node').count(),68);await shot('01-landing');
  await page.locator('[data-go=new]').first().click();await page.locator('#testForm').waitFor();await shot('02-new-simulation',true);
  await page.locator('[data-source=link]').click();assert(await page.locator('#linkArea').isVisible());assert(await page.locator('#testForm details').first().getAttribute('open')!==null);
+ await page.locator('[data-source=upload]').click();
+ await page.locator('#video').setInputFiles({name:'preview-check.mp4',mimeType:'video/mp4',buffer:Buffer.from('isolated preview control fixture')});
+ assert(await page.locator('.local-preview').getAttribute('controls')!==null);
+ assert((await page.locator('.local-preview').getAttribute('src')).startsWith('blob:'));
  await page.locator('[data-page=studio]').click();await page.locator('.agent-node').first().waitFor();
  assert.equal(await page.locator('.agent-node').count(),25);
  // Label documentation examples in the page, without altering production templates.
@@ -55,6 +59,14 @@ const server=http.createServer((req,res)=>{
  await page.mouse.move(20,20);await shot('03-audience-map',true);
  await page.locator('#view3d').click();assert.equal(await page.locator('#view3d').getAttribute('aria-pressed'),'true');
  await page.locator('#view2d').click();
+ const svg=page.locator('.audience-svg'),viewport=page.locator('.network-viewport');
+ const initialTransform=await viewport.getAttribute('transform');
+ await svg.hover();await page.mouse.wheel(0,-250);await page.waitForFunction(()=>document.querySelector('.network-viewport').getAttribute('transform').includes('scale(1.12)'));
+ assert.notEqual(await viewport.getAttribute('transform'),initialTransform);await page.locator('#resetGraph').click();assert.equal(await viewport.getAttribute('transform'),initialTransform);
+ const box=await svg.boundingBox();await page.mouse.move(box.x+30,box.y+30);await page.mouse.down();await page.mouse.move(box.x+90,box.y+50);await page.mouse.up();assert.notEqual(await viewport.getAttribute('transform'),initialTransform);await page.locator('#resetGraph').click();
+ await page.locator('#expandGraph').click();await page.waitForFunction(()=>document.fullscreenElement?.id==='networkPanel');await page.locator('#expandGraph').click();await page.waitForFunction(()=>!document.fullscreenElement);
+ await page.locator('[data-node="1"]').focus();await page.keyboard.press('Enter');assert((await page.locator('#agentInspector').innerText()).includes('Studio founder'));
+ await page.locator('[data-node="0"]').click();
  await page.locator('#graphFilter').selectOption('outside');assert.equal(await page.locator('.agent-node[aria-hidden=false]').count(),5);await page.locator('#graphFilter').selectOption('negative');assert.equal(await page.locator('.agent-node[aria-hidden=false]').count(),3);await page.locator('#graphFilter').selectOption('all');
  await page.locator('#replayRange').fill('0');await page.locator('#replayRange').dispatchEvent('input');assert((await page.locator('#replayLabel').innerText()).includes('Event 1'));
  assert(!(await page.locator('#agentInspector').innerText()).includes('The three-step checklist'));

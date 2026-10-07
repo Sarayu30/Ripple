@@ -1,10 +1,8 @@
 import asyncio
 import json
 import os
-import tempfile
 from pathlib import Path
 import pytest
-os.environ['DATA_DIR'] = tempfile.mkdtemp(prefix='ripple-test-')
 os.environ.pop('APP_PASSWORD',None)
 from fastapi.testclient import TestClient
 from app.main import app

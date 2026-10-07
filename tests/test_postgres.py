@@ -49,3 +49,26 @@ def test_history_shows_actual_audience_and_verdict():
     assert summary['verdict'] == 'Actual stored verdict'
     assert 'payload' not in summary and 'result' not in summary
     store.delete(id)
+
+def test_legacy_workflow_checkpoint_resumes_without_repeating_viewers(monkeypatch):
+    import asyncio
+    from app import simulation
+    from test_upgrade import setup_run, FixtureProvider
+    id = setup_run(monkeypatch)
+    directory = store.MEDIA / id
+    directory.mkdir(parents=True, exist_ok=True)
+    # A pre-existing SQLite checkpoint selects the compatibility saver.
+    with closing(sqlite3.connect(directory / 'workflow.sqlite')):
+        pass
+    FixtureProvider.fail_insights = True
+    asyncio.run(simulation.execute(id, asyncio.Semaphore(2)))
+    assert store.get(id)['status'] == 'failed'
+    calls = len([entry for entry in FixtureProvider.calls if entry[0] == 'Reaction'])
+    assert calls == 25
+    FixtureProvider.fail_insights = False
+    asyncio.run(simulation.execute(id, asyncio.Semaphore(2)))
+    assert store.get(id)['status'] == 'completed'
+    assert len([entry for entry in FixtureProvider.calls if entry[0] == 'Reaction']) == calls
+    with store.db() as c:
+        assert not c.execute('SELECT 1 FROM checkpoints WHERE thread_id=%s', (id,)).fetchone()
+    assert (directory / 'workflow.sqlite').exists()
