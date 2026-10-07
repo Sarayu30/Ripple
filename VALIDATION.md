@@ -1,44 +1,54 @@
-﻿# Validation performed
+# Validation performed
 
-Updated: 2026-10-04.
+Updated: 2026-10-07.
 
-## Automated verification
+## PostgreSQL and backend
 
-- Python regression suite: 30 tests passed, including legacy chat citations, automatic citation repair, bounded context and preservation of conversation history after failed verification.
-- Tests cover actual LangGraph execution and persistent checkpoint recovery using isolated fixture providers, independent viewer calls, partial recovery without duplicate evaluations, approved child versions, selective cache reuse, comparison, lineage exports, source-ID validation, persistent chat and bounded retrieval/history.
-- Original HTTP/privacy, malformed schema, provider cooldown, network propagation and legacy-result tests still pass.
-- Real FFmpeg ingestion generated a video and verified decoded metadata, sampled frames and extracted audio.
-- JavaScript syntax checks passed for application, Studio, network and workspace scripts.
-- The jsdom integration suite passed empty-state/new-form navigation, exactly three KPIs, circular nodes, inspector tabs and connections, project versions, suggestions, chat, approved experiments, comparisons, Library and history.
-- Fixture data is isolated from the production library. There is no production demo-score fallback.
+- Full Python regression suite: **33 passed** after the storage migration (571.17 seconds). Tests used an isolated PostgreSQL schema on the configured Neon database and fixture AI providers.
+- After history-summary and deletion refinements: **6 targeted tests passed** (82.10 seconds), covering migration, rollback, schema validation, history summaries, HTTP boundaries, and upgrade API contracts.
+- Final storage/isolation suite: **5 passed** (67.78 seconds), including an additional legacy SQLite checkpoint recovery test. The current suite has two more tests than the first full run; the full suite was not rerun just to duplicate those targeted checks.
+- New-run checkpoint recovery resumes a failed graph stage without reevaluating completed viewers. The added legacy test exercises the same interruption/resume path with an existing SQLite checkpoint while history remains in PostgreSQL.
+- Migration checks preserve exact payload/result data, leave SQLite bytes unchanged, and prove a deleted record is not resurrected by repeated import.
+- Database tests run in a generated `ripple_test_*` schema. `DATA_DIR` is set before collection to an isolated directory under ignored `artifacts/`, including when only one test file is selected. The schema is removed after the session. Recognizable unreferenced media left by an earlier test-isolation iteration was moved into ignored artifacts; existing saved simulations were excluded.
+- Existing independent-call, partial-recovery, cache invalidation, approved-version, comparison, report, chat scoping, citation validation/repair, provider failure, rate-limit, schema, URL, HTTP security, propagation and legacy-result checks passed.
+- Real FFmpeg ingestion created a test video and verified metadata, sampled frames and extracted audio.
 
-## Real Groq smoke verification
+## Existing workspace migration
 
-An isolated test with generic design-workflow content completed through the real configured Groq provider:
+- Connected to the configured Neon database without changing `.env`.
+- Imported and verified **one existing simulation**. Every stored input payload and result matched its SQLite source; the source file remained byte-for-byte unchanged.
+- Private media and existing legacy checkpoints were preserved.
+- A read-only smoke check against the migrated record passed the actual FastAPI routes for saved history/results, live network data, JSON export, local chat history, related versions and Markdown report. New frontend assets all returned successfully.
+- `check_setup.py --database` reported a successful connection with credentials hidden. FFmpeg and ffprobe were available.
+- No new paid Groq simulation or chat request was made during this redesign verification.
 
-- 25 of 25 synthetic viewer evaluations completed.
-- All six workflow stages, including insights and creative recommendations, completed.
-- 29 provenance records were saved.
-- Ask Ripple selected four read-only tools and returned a grounded answer with eight validated source references.
-- Provider rate limits and strict-schema failures exposed real recovery issues; these were fixed and the same saved run resumed successfully without repeating completed viewers.
-- Oversized chat retrieval initially received HTTP 413. A shared context budget and schema-specific output caps resolved it; the live chat retry passed.
+## Browser and visual verification
 
-This was text/transcript-based integration testing. Real-provider frame vision and real audio transcription were not separately exercised; local FFmpeg ingestion was.
+The jsdom integration suite passed introduction/empty-state navigation, new-input tabs, three KPIs, circular graph nodes, inspector tabs/connections, project history, full diagnostics, suggestions, grounded chat, approved what-if submission, comparison, Library and saved history.
 
-## Browser/visual limits
+The headless Chrome suite passed:
 
-### Ask Ripple legacy-citation fix
+- Introduction CTAs and workspace navigation.
+- Upload-preview controls/object URL creation and link/transcript disclosure. The preview test uses a minimal file fixture to check controls, not video decoding; FFmpeg decoding is tested separately.
+- 25 rendered fixture viewers, target/outside and negative filters, accessible labels, keyboard selection, inspector reasoning and connections.
+- 2D/3D switches, scroll zoom, pan, reset and fullscreen entry/exit.
+- Replay scrubbing and return to latest; the inspector does not reveal future reactions during a historical cutoff.
+- Full analysis, all recommendations, saved-source chat, approved revised-version submission and comparison output.
+- Light/dark toggle, native dialog Escape behavior, and absence of JavaScript page errors.
+- **16 horizontal-overflow checks** covering eight main pages at 390px and 768px, in addition to 1440px desktop captures.
 
-A pre-upgrade simulation had 25 saved viewer reactions and no provenance catalog. Retrieval exposed `viewer:N` references, but the old chat validator did not recognize them. The read-time compatibility adapter now registers those actual saved reactions using the same ordering as retrieval; it does not change simulation results or invent observations. Invalid model citations trigger one bounded corrective retry, and only verified replies enter conversation history. Tool references are limited to tools used for that answer.
+Seven PNG screenshots under `docs/screenshots/` were rendered and visually reviewed: introduction, input setup, audience Studio, Ask Ripple, comparison, mobile introduction and light Studio. Result screenshots are labeled documentation fixtures. The fixture server reads no production database, `.env`, private content or provider credentials. It cannot run paid model calls.
 
-After restarting the local server, the live HTTP chat endpoint answered “Why are viewers scrolling?” against that existing simulation with 11 valid source references. No simulation rerun was required.
+CSS reduced-motion rules disable decorative movement; the browser captures and checks run with reduced motion enabled. This is not a formal accessibility audit, screen-reader certification, cross-browser matrix or touch-device usability study.
 
-No browser surface was connected to this session. The browser inventory returned no available browsers, so the redesigned layout was not screenshot-reviewed and real-browser fullscreen, mobile rendering and visual accessibility remain unverified. DOM integration and JavaScript checks passed; they do not replace rendered-browser QA.
+## Earlier provider verification
+
+The 2026-10-04 validation record documented a real 25-viewer Groq text/transcript run, all six stages, saved provenance and evidence-grounded chat, including rate-limit/schema recovery and a live legacy-citation fix. Those are historical checks, not a fresh real-provider run of this redesign. Real-provider frame vision and audio transcription were not separately exercised in this session.
 
 ## Deployment limits
 
-Docker files were reviewed and updated to include runtime skills and exclude private artifacts, but an image build was not run. Multi-tenant security, high-load performance and predictive calibration are outside this local single-user implementation. Synthetic outcomes must not be presented as real analytics.
+Docker configuration was reviewed; an image build was not run. The app remains single-user and single-process. Public multi-tenant deployment, distributed jobs, load testing, disaster recovery drills and predictive calibration are outside this change. Neon stores database data remotely, while media and JSON caches still require local persistence and backups.
 
 ## Reproduce
 
-See README for Python and jsdom commands. Use a fresh workspace-local pytest temporary directory if Windows access controls prevent reusing an older system temp directory. Live provider smoke results remain in ignored artifacts and are not committed or displayed as user simulations.
+Use the commands in [README.md](README.md#development-and-validation). Supply a development PostgreSQL URL if you prefer a separate database; the role needs schema-creation rights. Keep tracebacks short to avoid displaying connection internals. `node tests/browser.cjs` uses installed Chrome, serves isolated fixtures, runs interaction/responsive checks and refreshes the public screenshots.

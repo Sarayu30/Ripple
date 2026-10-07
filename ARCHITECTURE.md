@@ -2,9 +2,11 @@
 
 ## Runtime boundaries
 
-FastAPI owns request validation, same-origin checks, bounded uploads, job admission and local workspace authentication. Existing SQLite tests and private-media paths are preserved. The UI remains vanilla JavaScript and SVG, with no build step.
+FastAPI owns request validation, same-origin checks, bounded uploads, job admission and local workspace authentication. Simulation history lives in PostgreSQL; existing SQLite history is imported without modifying its source. Private-media paths are preserved. The UI remains vanilla JavaScript and SVG, with no build step.
 
-- `app/agents/orchestrator.py`: typed LangGraph state, six specialized stages, durable per-run AsyncSqliteSaver, progress and execution trace.
+- `app/agents/orchestrator.py`: typed LangGraph state, six specialized stages, durable checkpoints, progress and execution trace.
+- `app/store.py`: bounded Psycopg connection pool, PostgreSQL history, transactional legacy import, and deletion of associated PostgreSQL checkpoint rows.
+- `app/checkpoints.py`: PostgreSQL saver with asynchronous thread offloading; preserved per-run SQLite savers for legacy recovery.
 - `content.py`, `audience.py`, `viewers.py`: original Groq/media behavior extracted into specialized modules.
 - `analytics.py`: deterministic propagation, segment summaries, provenance registry and citation validation.
 - `insights.py`, `strategist.py`: structured evidence-grounded interpretation and creative recommendations.
@@ -13,15 +15,32 @@ FastAPI owns request validation, same-origin checks, bounded uploads, job admiss
 - `experiments.py`: immutable child runs, cache reuse/invalidation and saved-result comparison.
 - `reports.py`: creator-ready Markdown built from stored outputs.
 - `schemas.py`: strict Pydantic models including experiments, insights, tool plans and chat.
-- `static/studio.js`, `workspace.js`, `network.js`, `upgrade.css`: focused Studio, drawers, experiments and network interactions.
+- `static/landing.js`, `redesign.css`: editorial introduction, illustrative SVG network, responsive dark/light design and reduced-motion behavior.
+- `static/studio.js`, `workspace.js`, `network.js`, `experience.js`: Studio, drawers, experiments, 2D/3D network, replay, and full diagnostic access. Earlier stylesheet layers remain for compatible component layouts.
 
 ## State and recovery
 
 SimulationState contains the immutable input row plus context, analysis, profiles, reactions, failures, response audits, outcome, provenance, insights and recommendations. Runtime objects hold only the provider, concurrency gate, directory and live event emitter; credentials never enter graph state.
 
-Each run has `private/{id}/workflow.sqlite`. LangGraph persists stage boundaries. A failed or interrupted graph resumes with `ainvoke(None)`. Viewer-level JSON caches preserve results inside the stage. Partial completed runs begin a fresh pass using those caches; downstream insights/recommendations are invalidated when missing viewers are retried.
+New runs persist LangGraph stage boundaries in PostgreSQL. Workflow thread IDs use the simulation ID; chat thread IDs use `chat:{id}` so the two graphs cannot overwrite each other. Existing `private/{id}/workflow.sqlite` and `chat.sqlite` files use their original savers and thread IDs, preserving exact-stage recovery for older runs. A failed or interrupted graph resumes with `ainvoke(None)`. Viewer-level JSON caches preserve results inside a stage. Partial completed runs begin a fresh pass using those caches; downstream insights/recommendations are invalidated when missing viewers are retried.
 
-Per-run graph/chat databases live inside private media directories, so deletion removes their state alongside media and JSON checkpoints. Existing records need no migration. Old results without provenance remain readable and are explicitly treated as legacy evidence.
+Startup creates an isolated schema (default `ripple`) and imports legacy `ripple.sqlite3` history transactionally. A migration marker prevents repeated imports from resurrecting deleted records. Existing ID conflicts fail safely instead of overwriting data. The source SQLite file remains untouched. Old results without provenance remain readable and are explicitly treated as legacy evidence.
+
+Deletion removes the history row and workflow/chat checkpoint rows in one PostgreSQL transaction before removing local media and caches. PostgreSQL connection failures therefore do not delete media first. Media deletion retains the existing best-effort local cleanup behavior. Backups must include both PostgreSQL and `DATA_DIR`; PostgreSQL alone cannot restore uploaded media, JSON caches, version metadata or the local chat transcript.
+
+Psycopg uses a bounded pool of 1–6 connections for the existing synchronous store interface. Checkpoint operations use a dedicated autocommit connection per active graph and `asyncio.to_thread`, retaining Windows Proactor compatibility needed by FFmpeg subprocesses. The installed PostgresSaver supplies serialization, locking, versioning, and checkpoint SQL. Schema names are validated; statement values are parameterized. New LangGraph tables are set up once per process/schema.
+
+Neon pooled URLs are resolved to the same endpoint's direct hostname internally: its transaction pool rejects startup `search_path`. A small application pool and disabled prepared-statement caching avoid a hidden reliance on transaction-pool session behavior. `.env` is never rewritten. Other PostgreSQL URLs are used as provided. Keep provider-supplied TLS options.
+
+References: [Psycopg row factories](https://www.psycopg.org/psycopg3/docs/advanced/rows.html), [LangGraph PostgreSQL checkpoint API](https://reference.langchain.com/python/langgraph.checkpoint.postgres).
+
+## UI state and feature access
+
+The introduction is the default view; hashes link to Studio, new simulation, history, library, comparison, method, and setup. The existing route dispatcher and API contracts remain. The landing network is explicitly labeled illustrative and uses deterministic SVG geometry. Actual Studio node colors and metrics come exclusively from returned saved reactions.
+
+Replay uses the renderer's existing event cutoff; the inspector obeys that cutoff too, so a future response cannot appear early. Leaving the Studio clears replay and polling timers. Video previews use object URLs released on replacement/navigation. Theme preference is stored locally. Dialogs use native modal focus handling with Escape and focus restoration. Reduced-motion CSS disables decorative animations; the replay button remains an intentional user control.
+
+The focused Studio keeps detailed scores, scenarios, content diagnostics, source frames, full recommendations, disagreements, profile reasoning and execution events accessible through disclosures and drawers. Provider setup and method controls remain visible on mobile. Public documentation captures are generated by a separate fixture HTTP server, never by injecting example records into production storage.
 
 The dependency graph is intentionally bounded. Simulation stages follow a known plan; per-viewer evaluation runs through a bounded queue and response-driven propagation waves. Chat uses conditional routing from a validated plan to its selected tools, then a grounded answer. This is an orchestrated agent workflow, not an unrestricted autonomous agent.
 
