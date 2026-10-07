@@ -6,7 +6,9 @@ Ripple gives your content a rehearsal audience. Upload a short video or add a pu
 
 ![Ripple’s introduction with an animated audience illustration](docs/screenshots/01-landing.png)
 
-**[Who it’s for](#who-is-ripple-for)** · **[Feature tour](#a-tour-of-ripple)** · **[Setup](#run-ripple-locally)** · **[First simulation](#your-first-simulation)** · **[Troubleshooting](#troubleshooting)**
+**Start here:** select **Simulate your audience** to test content, or **Open Studio** to return to saved work. The connected dots introduce the idea of an audience with different perspectives; this opening illustration is not a simulation result.
+
+**[Who it’s for](#who-is-ripple-for)** · **[See the screenshots](#see-ripple-in-screenshots)** · **[Setup](#run-ripple-locally)** · **[First simulation](#your-first-simulation)** · **[Troubleshooting](#troubleshooting)**
 
 ## Who is Ripple for?
 
@@ -28,7 +30,9 @@ Each viewer receives their own AI evaluation. Ripple combines those responses in
 
 These are synthetic perspectives, **not real Instagram analytics, human research, or a promise of engagement**. Ripple helps you form and investigate creative hypotheses. It does not publish posts, scrape protected videos, or render replacement footage.
 
-## A tour of Ripple
+## See Ripple in screenshots
+
+Follow the screens below from your first upload to your next creative decision. Every screenshot is displayed directly in this README; click an image to inspect it at full size.
 
 Screenshots containing results use **clearly labeled documentation fixtures**, not real predictions or private user content. Fixtures exist only in the browser test harness; the application has no fabricated-results mode.
 
@@ -37,6 +41,14 @@ Screenshots containing results use **clearly labeled documentation fixtures**, n
 Upload MP4, MOV, or WebM, preview the selected video, and describe the intended audience and message. Alternatively, paste a public link and supply its transcript or caption. Choose a panel size and optionally include people outside your intended audience.
 
 ![Content upload, audience setup, and simulation controls](docs/screenshots/02-new-simulation.png)
+
+**Read this screen from top to bottom:**
+
+- **The content:** name your test, then choose **Upload video** or **Paste a link**. Add the transcript and caption when needed.
+- **The audience & intention:** describe who should care, what you want them to understand, and what action they should take.
+- **Your test audience:** choose how many AI viewers to include, review the consent text, then select **Run audience test**.
+
+**Why it helps:** the same idea can land differently with different people. Setting the audience and goal gives the feedback useful context.
 
 - Start with **25 viewers** to keep the first run small. Larger panels increase API usage, not proven accuracy.
 - Uploads are limited to **100 MB and 180 seconds by default**, configurable on the server.
@@ -48,6 +60,15 @@ Upload MP4, MOV, or WebM, preview the selected video, and describe the intended 
 Each dot is one simulated viewer. Select a dot to see the reaction, the reason behind it, its audience group, profile, and possible connections. Expand reasoning to inspect all returned engagement scores.
 
 ![Audience map with selected viewer, stage progress, insights, and recommendations](docs/screenshots/03-audience-map.png)
+
+**What you’re looking at:**
+
+- **Across the top:** a summary of completed viewers, message clarity, and sharing responses, followed by the analysis stages.
+- **In the map:** dots represent viewers; colors distinguish their returned reactions. Use the filters to explore one audience or response type.
+- **On the right:** **About this viewer** explains the selected person’s reaction. Switch between **Thoughts**, **Profile**, and **Connections** for more context.
+- **Below the map:** replay controls, a labeled legend, the main findings, and the suggested next edit.
+
+**Try it:** select a dot, read its objection, then select a different viewer. This helps you understand disagreement instead of relying only on an average score.
 
 - **2D** provides an overview; **3D** lets you rotate the layout by dragging.
 - Filter by target audience, outside audience, sharing, scrolling, negative reactions, or pending responses.
@@ -68,6 +89,18 @@ Each dot is one simulated viewer. Select a dot to see the reaction, the reason b
 
 The Studio separates **what happened**, **why it happened**, and **what should I change?** The first recommendation is prominent; all remaining suggestions, alternative hooks, captions, CTAs, cover ideas, and creative variants are available in a drawer.
 
+![Light-theme Studio showing what happened, why it happened, the priority recommendation, and expandable evidence sections](docs/screenshots/07-light-studio.png)
+
+**How to use this screen:**
+
+- Below the map, read **What happened** and **Why it happened** to understand the main finding.
+- Start with the recommendation under **What should I change?** In this example, it suggests showing the finished mood board before explaining the process.
+- Select **See all suggestions** to open the complete edits, alternative hook, caption, CTA, creative variants, and what to keep.
+- Expand **Why Ripple thinks this / evidence** or **Your content / full analysis** to inspect the basis for the feedback.
+- From the suggestions drawer, select **Test an edit** to describe a revision and run it as a separate simulation after approval.
+
+**Why it helps:** you can turn the audience feedback into a specific next experiment, rather than guessing what to change.
+
 Expandable sections retain audience segments, full content diagnostics and scores, sharing scenarios, sampled source frames, version history, assumptions, evidence references, and AI execution activity. Download a creator-friendly Markdown report or export the full saved JSON.
 
 ### 4. Ask Ripple about your simulation
@@ -76,11 +109,21 @@ Ask why viewers scrolled, which segment responded differently, or what opening t
 
 ![Ask Ripple answering a question with saved evidence references](docs/screenshots/04-ask-ripple.png)
 
+**In this example:** the creator asks what to change in the opening. The answer suggests showing the finished result earlier and includes source IDs underneath it. Those references connect the answer to saved evidence from the simulation.
+
+Use the suggested questions or type your own. Asking a question does not change your content or automatically run another simulation.
+
 ### 5. Test a change and compare versions
 
 Choose an original simulation, change a hook, caption, CTA, audience, or describe a content variation, then approve the revised run. Each version keeps its own input, media copies, and results.
 
 ![Original and revised versions with metric changes, segment differences, and recommendations](docs/screenshots/05-compare-versions.png)
+
+**Read the comparison in three steps:**
+
+1. Pick **VERSION A / Original** and **VERSION B / Updated** at the top.
+2. Read **Revised − original** to see which scores changed. For example, `+5` means five score points higher in the revised simulation—not 5% more real-world engagement.
+3. Compare the segment responses, objections, and recommendations below. Open either version’s evidence when you need the reasoning behind a difference.
 
 Content-only edits reuse the audience profiles while reevaluating responses. Audience changes regenerate the profiles. Comparisons expose changed assumptions and model variability; a positive score difference does not prove a real improvement. Described video edits are hypothetical—the uploaded video itself is not edited.
 
@@ -90,14 +133,15 @@ Content-only edits reuse the audience profiles while reevaluating responses. Aud
 
 The interface supports dark and light themes, desktop/tablet/mobile layouts, keyboard navigation, and reduced-motion preferences.
 
-<details>
-<summary>See the light theme and mobile introduction</summary>
+### 7. Choose a comfortable theme
 
-![Light-theme Studio](docs/screenshots/07-light-studio.png)
+The audience-map screenshot above shows dark mode; the recommendations screenshot shows light mode. Both keep the map, filters, 2D/3D controls, replay, recommendations, and evidence sections available. Use the theme button in the top-right corner; Ripple remembers your preference in this browser.
+
+### 8. Explore Ripple on a smaller screen
 
 <img src="docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
 
-</details>
+**On mobile:** the introduction stacks into a single column, with the simulation button followed by the audience illustration and a three-step explanation. The workspace also reorganizes for smaller screens, keeping its navigation and controls accessible.
 
 ## Run Ripple locally
 
