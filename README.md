@@ -4,7 +4,7 @@
 
 Ripple gives your content a rehearsal audience. Upload a short video or add a public link with its transcript or caption, describe who you want to reach, and explore how different **AI-simulated viewers** might respond. See what connects, why someone might scroll, and which edits are worth testing next.
 
-![Ripple’s introduction with an animated audience illustration](docs/screenshots/01-landing.png)
+![Ripple’s introduction with an animated audience illustration](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/01-landing.png)
 
 **Start here:** select **Simulate your audience** to test content, or **Open Studio** to return to saved work. The connected dots introduce the idea of an audience with different perspectives; this opening illustration is not a simulation result.
 
@@ -40,7 +40,7 @@ Screenshots containing results use **clearly labeled documentation fixtures**, n
 
 Upload MP4, MOV, or WebM, preview the selected video, and describe the intended audience and message. Alternatively, paste a public link and supply its transcript or caption. Choose a panel size and optionally include people outside your intended audience.
 
-![Content upload, audience setup, and simulation controls](docs/screenshots/02-new-simulation.png)
+![Content upload, audience setup, and simulation controls](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/02-new-simulation.png)
 
 **Read this screen from top to bottom:**
 
@@ -59,7 +59,7 @@ Upload MP4, MOV, or WebM, preview the selected video, and describe the intended 
 
 Each dot is one simulated viewer. Select a dot to see the reaction, the reason behind it, its audience group, profile, and possible connections. Expand reasoning to inspect all returned engagement scores.
 
-![Audience map with selected viewer, stage progress, insights, and recommendations](docs/screenshots/03-audience-map.png)
+![Audience map with selected viewer, stage progress, insights, and recommendations](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/03-audience-map.png)
 
 **What you’re looking at:**
 
@@ -89,7 +89,7 @@ Each dot is one simulated viewer. Select a dot to see the reaction, the reason b
 
 The Studio separates **what happened**, **why it happened**, and **what should I change?** The first recommendation is prominent; all remaining suggestions, alternative hooks, captions, CTAs, cover ideas, and creative variants are available in a drawer.
 
-![Light-theme Studio showing what happened, why it happened, the priority recommendation, and expandable evidence sections](docs/screenshots/07-light-studio.png)
+![Light-theme Studio showing what happened, why it happened, the priority recommendation, and expandable evidence sections](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/07-light-studio.png)
 
 **How to use this screen:**
 
@@ -107,7 +107,7 @@ Expandable sections retain audience segments, full content diagnostics and score
 
 Ask why viewers scrolled, which segment responded differently, or what opening to try. Answers use scoped retrieval of the selected simulation and validated evidence references. Follow-up conversations are saved.
 
-![Ask Ripple answering a question with saved evidence references](docs/screenshots/04-ask-ripple.png)
+![Ask Ripple answering a question with saved evidence references](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/04-ask-ripple.png)
 
 **In this example:** the creator asks what to change in the opening. The answer suggests showing the finished result earlier and includes source IDs underneath it. Those references connect the answer to saved evidence from the simulation.
 
@@ -117,7 +117,7 @@ Use the suggested questions or type your own. Asking a question does not change 
 
 Choose an original simulation, change a hook, caption, CTA, audience, or describe a content variation, then approve the revised run. Each version keeps its own input, media copies, and results.
 
-![Original and revised versions with metric changes, segment differences, and recommendations](docs/screenshots/05-compare-versions.png)
+![Original and revised versions with metric changes, segment differences, and recommendations](https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/05-compare-versions.png)
 
 **Read the comparison in three steps:**
 
@@ -139,7 +139,7 @@ The audience-map screenshot above shows dark mode; the recommendations screensho
 
 ### 8. Explore Ripple on a smaller screen
 
-<img src="docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
+<img src="https://github.com/Sarayu30/Ripple/blob/version_2/docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
 
 **On mobile:** the introduction stacks into a single column, with the simulation button followed by the audience illustration and a three-step explanation. The workspace also reorganizes for smaller screens, keeping its navigation and controls accessible.
 
