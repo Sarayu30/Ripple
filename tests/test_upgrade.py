@@ -44,7 +44,8 @@ def test_graph_restart_resumes_pending_stage(monkeypatch):
     assert store.get(id)['status']=='failed'
     before=len([x for x in FixtureProvider.calls if x[0]=='Reaction'])
     assert before==25
-    assert (store.MEDIA/id/'workflow.sqlite').exists()
+    with store.db() as c:
+        assert c.execute('SELECT 1 FROM checkpoints WHERE thread_id=%s', (id,)).fetchone()
     FixtureProvider.fail_insights=False
     asyncio.run(simulation.execute(id,asyncio.Semaphore(2)))
     row=store.get(id)
