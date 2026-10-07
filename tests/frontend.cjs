@@ -6,6 +6,7 @@ const {JSDOM}=require('../artifacts/ui-check/node_modules/jsdom');
 const html=fs.readFileSync('app/static/index.html','utf8');
 const dom=new JSDOM(html,{url:'http://localhost:8000',runScripts:'outside-only'});
 const w=dom.window;
+w.scrollTo=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};
 w.HTMLDialogElement.prototype.close=function(){this.open=false};
 const profile={personaName:'001 · Test viewer',personaType:'Designer',background:'Independent designer',motivation:'Save time',skepticism:'Needs evidence',viewingContext:'Lunch',audienceGroup:'target'};
@@ -27,13 +28,17 @@ w.fetch=async(url,opts={})=>{
  else throw Error('Unmocked route '+route);
  return {ok:true,json:async()=>structuredClone(body)};
 };
-for(const file of ['network.js','app.js','studio.js','workspace.js'])vm.runInContext(fs.readFileSync('app/static/'+file,'utf8'),dom.getInternalVMContext(),{filename:file});
+for(const file of ['landing.js','experience.js','network.js','app.js','studio.js','workspace.js'])vm.runInContext(fs.readFileSync('app/static/'+file,'utf8'),dom.getInternalVMContext(),{filename:file});
 const tick=()=>new Promise(r=>setTimeout(r,20));
 (async()=>{
- await tick();assert(w.document.querySelector('#firstSimulation'),'Empty Studio must have a working start action');
+ await tick();assert(w.document.querySelector('#hero-title'),'Landing must introduce the product');await w.navigate('studio');assert(w.document.querySelector('#firstSimulation'),'Empty Studio must have a working start action');
  await w.navigate('new');const newForm=w.document.querySelector('#testForm');w.document.querySelector('[data-source="link"]').click();assert.equal(newForm.elements.namedItem('sourceType').value,'link');assert(!w.document.querySelector('#linkArea').classList.contains('hidden'));
  listing=[row,{...row,id:'two',title:'Revision'}];await w.openTest('one');await tick();
  assert.equal(w.document.querySelectorAll('.studio-kpi').length,3);
+ w.document.querySelector('#view3d').click();assert.equal(w.document.querySelector('#view3d').getAttribute('aria-pressed'),'true');
+ w.document.querySelector('#view2d').click();assert.equal(w.document.querySelector('#view2d').getAttribute('aria-pressed'),'true');
+ assert(w.document.querySelector('#replayRange'));
+ w.document.querySelector('#fullAnalysis').click();assert(w.document.querySelector('#workspaceDrawer').textContent.includes('Content diagnostics'));w.closeDrawer();
  assert.equal(w.document.querySelectorAll('.agent-node rect').length,0);
  assert.equal(w.document.querySelectorAll('.agent-node').length,2);
  w.document.querySelector('[data-node="0"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));
