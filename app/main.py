@@ -33,6 +33,7 @@ async def lifespan(app):
     tasks = list(jobs.values())
     for t in tasks: t.cancel()
     await asyncio.gather(*tasks,return_exceptions=True)
+    store.close()
 
 app = FastAPI(title='Ripple',version='2.0.0',lifespan=lifespan,docs_url=None,redoc_url=None)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','[::1]','testserver'])

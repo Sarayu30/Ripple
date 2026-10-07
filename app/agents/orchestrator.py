@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timezone
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from ..checkpoints import saver as checkpoint_saver
 from .. import store
 from ..providers import ProviderError
 from ..simulation import checkpoint, cached
@@ -75,7 +75,7 @@ async def execute_graph(id,semaphore,provider_factory):
     try:
         runtime=Runtime(id,semaphore,provider_factory('groq'))
         store.update(id,status='running',error=None)
-        async with AsyncSqliteSaver.from_conn_string(str(directory/'workflow.sqlite')) as saver:
+        async with checkpoint_saver(directory) as saver:
             graph=build_graph(runtime).compile(checkpointer=saver)
             config={'configurable':{'thread_id':id},'recursion_limit':30}
             snapshot=await graph.aget_state(config)
