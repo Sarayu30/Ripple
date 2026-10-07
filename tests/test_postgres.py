@@ -39,3 +39,13 @@ def test_schema_rejects_sql(monkeypatch):
     monkeypatch.setenv('DATABASE_SCHEMA', 'public; DROP TABLE tests')
     with pytest.raises(RuntimeError):
         store.schema()
+
+def test_history_shows_actual_audience_and_verdict():
+    id = str(uuid.uuid4())
+    store.create(id, {'title': 'History summary', 'audience': 'Existing audience'})
+    store.update(id, result={'outcome': {'verdict': 'Actual stored verdict'}})
+    summary = next(row for row in store.listing() if row['id'] == id)
+    assert summary['audience'] == 'Existing audience'
+    assert summary['verdict'] == 'Actual stored verdict'
+    assert 'payload' not in summary and 'result' not in summary
+    store.delete(id)

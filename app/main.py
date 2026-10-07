@@ -179,8 +179,8 @@ async def retry(id: str):
 async def delete(id: str):
     find(id)
     if id in jobs or id in chat_jobs: raise HTTPException(409,'Wait for the running request to finish before deleting.')
-    shutil.rmtree(store.MEDIA/id,ignore_errors=True)
     store.delete(id)
+    shutil.rmtree(store.MEDIA/id,ignore_errors=True)
     return {'deleted':True}
 
 @app.get('/api/tests/{id}/frames/{name}')

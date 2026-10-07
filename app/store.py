@@ -124,7 +124,10 @@ def get(id):
 
 def listing():
     with db() as c:
-        return c.execute('SELECT id,created,title,status,stage,progress,error FROM tests ORDER BY created DESC').fetchall()
+        return c.execute("SELECT id,created,title,status,stage,progress,error, "
+                         "payload::jsonb->>'audience' AS audience, "
+                         "result::jsonb->'outcome'->>'verdict' AS verdict "
+                         "FROM tests ORDER BY created DESC").fetchall()
 
 def delete(id):
     with db() as c:
