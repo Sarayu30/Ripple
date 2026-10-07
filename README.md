@@ -1,227 +1,317 @@
-# Ripple v3 — Skill-based Audience Agents
+# Ripple
 
-**Already using Ripple? Read [UPGRADE.md](UPGRADE.md) first. Keep your existing `.env` and `data` folder.**
+### Know how your content lands before you post.
 
-V3 replaces single-shot viewer evaluation with independent, resumable agents. Each
-agent discovers reviewed `SKILL.md` metadata, chooses a skill, reads evidence through
-an allowlisted tool, and submits a validated reaction. The inspector shows actual
-skill versions and tool activity. No frontend reaction generator exists.
+Ripple gives your content a rehearsal audience. Upload a short video or add a public link with its transcript or caption, describe who you want to reach, and explore how different **AI-simulated viewers** might respond. See what connects, why someone might scroll, and which edits are worth testing next.
 
-Report synthesis uses **LangChain Deep Agents 0.7.18**: a coordinator plans with
-`write_todos`, reads evidence, and delegates to an evidence reviewer and a creative
-editor. All three share a bounded model-call budget. The final report still passes
-Pydantic validation. Provider setup has moved out of the UI; edit `.env` and run
-`python check_setup.py --groq` when needed.
+![Ripple’s introduction with an animated audience illustration](docs/screenshots/01-landing.png)
 
-See [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) for design decisions, research,
-request budgets, checkpoint behavior, and how to add reviewed skills.
+**Start here:** select **Simulate your audience** to test content, or **Open Studio** to return to saved work. The connected dots introduce the idea of an audience with different perspectives; this opening illustration is not a simulation result.
 
+**[Who it’s for](#who-is-ripple-for)** · **[See the screenshots](#see-ripple-in-screenshots)** · **[Setup](#run-ripple-locally)** · **[First simulation](#your-first-simulation)** · **[Troubleshooting](#troubleshooting)**
 
-V2 adds the reference-video-inspired live network, target/outside-audience cohorts, clickable persona inspector, 2D/3D projection, playback of saved agent events, light/dark themes, private video playback, explicit provider errors, paced requests and model discovery. The original insights, recommendations, history, export and comparison remain available. See [FEATURE_MAP.md](FEATURE_MAP.md) for the reference-to-implementation mapping.
+## Who is Ripple for?
 
-A runnable local AI audience-testing platform for short-form video. Light/dark dashboard, independent persona evaluations, private media ingestion, explicit sharing scenarios, durable test history, JSON export, and version comparison.
+| You are… | Use Ripple to… |
+| --- | --- |
+| An Instagram creator | Explore whether a Reel’s opening, message, and call to action make sense to your intended audience. |
+| A social media manager | Examine different audience perspectives before committing to a campaign concept. |
+| A founder or marketer | Find where a product explanation needs clearer benefits or stronger evidence. |
+| A creative strategist or agency | Compare proposed hooks, captions, and audience definitions using saved simulations. |
+| A developer studying agent workflows | Inspect a working six-stage LangGraph pipeline, structured outputs, evidence references, and resumable checkpoints. |
 
-**No random/demo scores are used in the application. An API key is required to run a simulation.** The test suite uses isolated fake provider fixtures only.
+Instagram and short-form content are the starting point. The interface also supports TikTok, YouTube Shorts, LinkedIn, and other public HTTPS links.
 
-## Quick start — Windows PowerShell
+## What does it do?
 
-Install Python 3.11+ and FFmpeg. Ensure both `ffmpeg` and `ffprobe` are on PATH (restart your terminal after installing). FFmpeg is required only for uploaded videos; link/transcript tests can run without it.
+**Your content → a simulated audience → individual reactions → audience patterns → suggested improvements → a version you can compare.**
+
+Each viewer receives their own AI evaluation. Ripple combines those responses into an interactive audience map and evidence-grounded recommendations. You can ask follow-up questions, revisit saved work, and test a proposed change without overwriting the original simulation.
+
+These are synthetic perspectives, **not real Instagram analytics, human research, or a promise of engagement**. Ripple helps you form and investigate creative hypotheses. It does not publish posts, scrape protected videos, or render replacement footage.
+
+## See Ripple in screenshots
+
+Follow the screens below from your first upload to your next creative decision. Every screenshot is displayed directly in this README; click an image to inspect it at full size.
+
+Screenshots containing results use **clearly labeled documentation fixtures**, not real predictions or private user content. Fixtures exist only in the browser test harness; the application has no fabricated-results mode.
+
+### 1. Bring your content and define your audience
+
+Upload MP4, MOV, or WebM, preview the selected video, and describe the intended audience and message. Alternatively, paste a public link and supply its transcript or caption. Choose a panel size and optionally include people outside your intended audience.
+
+![Content upload, audience setup, and simulation controls](docs/screenshots/02-new-simulation.png)
+
+**Read this screen from top to bottom:**
+
+- **The content:** name your test, then choose **Upload video** or **Paste a link**. Add the transcript and caption when needed.
+- **The audience & intention:** describe who should care, what you want them to understand, and what action they should take.
+- **Your test audience:** choose how many AI viewers to include, review the consent text, then select **Run audience test**.
+
+**Why it helps:** the same idea can land differently with different people. Setting the audience and goal gives the feedback useful context.
+
+- Start with **25 viewers** to keep the first run small. Larger panels increase API usage, not proven accuracy.
+- Uploads are limited to **100 MB and 180 seconds by default**, configurable on the server.
+- A link does not grant access to its video. Upload the original file for actual sampled-frame and audio analysis.
+- Before submitting, the consent control explains which content is sent to Groq.
+
+### 2. Explore the audience reaction map
+
+Each dot is one simulated viewer. Select a dot to see the reaction, the reason behind it, its audience group, profile, and possible connections. Expand reasoning to inspect all returned engagement scores.
+
+![Audience map with selected viewer, stage progress, insights, and recommendations](docs/screenshots/03-audience-map.png)
+
+**What you’re looking at:**
+
+- **Across the top:** a summary of completed viewers, message clarity, and sharing responses, followed by the analysis stages.
+- **In the map:** dots represent viewers; colors distinguish their returned reactions. Use the filters to explore one audience or response type.
+- **On the right:** **About this viewer** explains the selected person’s reaction. Switch between **Thoughts**, **Profile**, and **Connections** for more context.
+- **Below the map:** replay controls, a labeled legend, the main findings, and the suggested next edit.
+
+**Try it:** select a dot, read its objection, then select a different viewer. This helps you understand disagreement instead of relying only on an average score.
+
+- **2D** provides an overview; **3D** lets you rotate the layout by dragging.
+- Filter by target audience, outside audience, sharing, scrolling, negative reactions, or pending responses.
+- Zoom, pan, reset, expand to fullscreen, or use **Tab + Enter** to select viewers.
+- **Replay analysis** steps through saved events, with pause, scrubbing, speed controls, and a return to the latest reactions. Older records without events explain that replay is unavailable.
+- Connections represent hypothetical sharing paths, not a real follower graph.
+
+| Label | What it actually means |
+| --- | --- |
+| Simulated viewers | The number of viewers with returned reactions. |
+| Message understood | Percentage of completed viewers with a clarity score of at least 70/100. |
+| Would share | Percentage whose returned action is `share`. |
+| Engagement / share intent scores | AI-stated intent scores, not calibrated probabilities of human behavior. |
+| Evidence confidence | An evidence/completion heuristic capped at 75, not the probability a prediction is correct. |
+| Target / outside audience | People the content is intended for / other simulated perspectives. |
+
+### 3. Find the next edit and inspect the evidence
+
+The Studio separates **what happened**, **why it happened**, and **what should I change?** The first recommendation is prominent; all remaining suggestions, alternative hooks, captions, CTAs, cover ideas, and creative variants are available in a drawer.
+
+![Light-theme Studio showing what happened, why it happened, the priority recommendation, and expandable evidence sections](docs/screenshots/07-light-studio.png)
+
+**How to use this screen:**
+
+- Below the map, read **What happened** and **Why it happened** to understand the main finding.
+- Start with the recommendation under **What should I change?** In this example, it suggests showing the finished mood board before explaining the process.
+- Select **See all suggestions** to open the complete edits, alternative hook, caption, CTA, creative variants, and what to keep.
+- Expand **Why Ripple thinks this / evidence** or **Your content / full analysis** to inspect the basis for the feedback.
+- From the suggestions drawer, select **Test an edit** to describe a revision and run it as a separate simulation after approval.
+
+**Why it helps:** you can turn the audience feedback into a specific next experiment, rather than guessing what to change.
+
+Expandable sections retain audience segments, full content diagnostics and scores, sharing scenarios, sampled source frames, version history, assumptions, evidence references, and AI execution activity. Download a creator-friendly Markdown report or export the full saved JSON.
+
+### 4. Ask Ripple about your simulation
+
+Ask why viewers scrolled, which segment responded differently, or what opening to try. Answers use scoped retrieval of the selected simulation and validated evidence references. Follow-up conversations are saved.
+
+![Ask Ripple answering a question with saved evidence references](docs/screenshots/04-ask-ripple.png)
+
+**In this example:** the creator asks what to change in the opening. The answer suggests showing the finished result earlier and includes source IDs underneath it. Those references connect the answer to saved evidence from the simulation.
+
+Use the suggested questions or type your own. Asking a question does not change your content or automatically run another simulation.
+
+### 5. Test a change and compare versions
+
+Choose an original simulation, change a hook, caption, CTA, audience, or describe a content variation, then approve the revised run. Each version keeps its own input, media copies, and results.
+
+![Original and revised versions with metric changes, segment differences, and recommendations](docs/screenshots/05-compare-versions.png)
+
+**Read the comparison in three steps:**
+
+1. Pick **VERSION A / Original** and **VERSION B / Updated** at the top.
+2. Read **Revised − original** to see which scores changed. For example, `+5` means five score points higher in the revised simulation—not 5% more real-world engagement.
+3. Compare the segment responses, objections, and recommendations below. Open either version’s evidence when you need the reasoning behind a difference.
+
+Content-only edits reuse the audience profiles while reevaluating responses. Audience changes regenerate the profiles. Comparisons expose changed assumptions and model variability; a positive score difference does not prove a real improvement. Described video edits are hypothetical—the uploaded video itself is not edited.
+
+### 6. Return to your work, on any screen
+
+**Your simulations** shows saved runs, dates, audience descriptions, status, and available verdicts. Reopen results, resume interrupted work, or delete a simulation with confirmation. **Library** collects creative directions and downloadable reports.
+
+The interface supports dark and light themes, desktop/tablet/mobile layouts, keyboard navigation, and reduced-motion preferences.
+
+### 7. Choose a comfortable theme
+
+The audience-map screenshot above shows dark mode; the recommendations screenshot shows light mode. Both keep the map, filters, 2D/3D controls, replay, recommendations, and evidence sections available. Use the theme button in the top-right corner; Ripple remembers your preference in this browser.
+
+### 8. Explore Ripple on a smaller screen
+
+<img src="docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
+
+**On mobile:** the introduction stacks into a single column, with the simulation button followed by the audience illustration and a three-step explanation. The workspace also reorganizes for smaller screens, keeping its navigation and controls accessible.
+
+## Run Ripple locally
+
+You need:
+
+1. **Python 3.11 or newer** and Git.
+2. A **Groq API key** with access to suitable text, vision, and transcription models.
+3. A **PostgreSQL database**. A Neon project works; keep the TLS parameters in its connection string.
+4. **FFmpeg and ffprobe** on your PATH for uploaded-video analysis. They are not needed for transcript/caption-only link tests.
+
+No Node installation or frontend build is needed to run Ripple. Node is only used for optional UI development checks.
+
+### Windows PowerShell
 
 ```powershell
-cd ripple
+git clone --branch version_2 https://github.com/Sarayu30/Ripple.git
+cd Ripple
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# New installations only. Preserve an existing .env.
 Copy-Item .env.example .env
-notepad .env
-# Add GROQ_API_KEY=your_real_key and save, then:
-.\.venv\Scripts\python.exe run.py
 ```
 
-Open **http://localhost:8000**. No Node/npm setup is needed.
-
-## macOS / Linux
-
-Install Python 3.11+ and FFmpeg through your system package manager.
+### macOS / Linux
 
 ```bash
-cd ripple
+git clone --branch version_2 https://github.com/Sarayu30/Ripple.git
+cd Ripple
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+# New installations only. Preserve an existing .env.
 cp .env.example .env
-# Edit .env and add GROQ_API_KEY
+```
+
+### Configure your private `.env`
+
+Open `.env` in your editor and fill in:
+
+```dotenv
+GROQ_API_KEY=your_groq_key
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
+DATABASE_SCHEMA=ripple
+```
+
+Use the complete URL supplied by your database provider; keep any additional TLS parameters. Never commit `.env`. The connection string and Groq key stay on the server and are not returned to the browser. Do not put an API key in a model-name field.
+
+The example also contains text, vision, and transcription model IDs. Verify that those models are available in your Groq account. **Provider setup** in the app checks the available model list without generating content.
+
+### Start the app
+
+```powershell
+# Windows
+.\.venv\Scripts\python.exe check_setup.py --database
+.\.venv\Scripts\python.exe run.py
+```
+
+```bash
+# macOS / Linux, with the virtual environment activated
+python check_setup.py --database
 python run.py
 ```
 
-## Docker option
+Open **http://localhost:8000**. Start from the introduction or jump directly to **http://localhost:8000/#studio**.
 
-Docker bundles Python and FFmpeg. Copy `.env.example` to `.env`, set your key, then:
+The first start creates Ripple’s tables in the configured PostgreSQL schema. If `data/ripple.sqlite3` exists, its history is imported transactionally once. Existing source records and local files are preserved. See [UPGRADE.md](UPGRADE.md) before updating an older installation.
+
+### Docker alternative
+
+Configure `.env` first, then run:
 
 ```bash
 docker compose up --build
 ```
 
-Open http://localhost:8000. Docker exposes the port on loopback only. The named volume keeps your saved tests. Do not use `docker compose down -v` unless you intend to remove the database and all media.
-
-## Configure providers
-
-| Setting | Purpose |
-|---|---|
-| `AI_PROVIDER=groq` | Default selected provider; each test can override it |
-| `GROQ_API_KEY` | Your Groq key, used only by the backend |
-| `GROQ_MODEL` | Persona, synthesis and recommendation model; default `openai/gpt-oss-20b` |
-| `GROQ_VISION_MODEL` | Frame analysis model; default `qwen/qwen3.8-27b` from current Groq vision docs |
-| `GROQ_TRANSCRIPTION_MODEL` | Default `whisper-large-v3-turbo` |
-| `GEMINI_API_KEY` | Optional Gemini key |
-| `GEMINI_MODEL` | Default `gemini-2.5-flash`; Gemini handles text, frame analysis and audio transcription |
-| `AGENT_MAX_TOOL_STEPS` | Tool-selection budget per persona; default 4, bounded 2–8, followed by one reaction call |
-| `DEEP_MAX_MODEL_CALLS` | Shared coordinator/specialist call budget; default 24, bounded 8–40; one final formatting call |
-| `AGENT_CONCURRENCY` | Concurrent LLM evaluations; default 1, capped at 10 |
-| `REQUEST_INTERVAL_SECONDS` | Minimum spacing between request starts, default 4 seconds; shared per provider/key in the worker |
-| `MAX_PROVIDER_ATTEMPTS` | Max attempts per structured request, default 4 |
-| `MAX_COMPLETION_TOKENS` | Groq output budget, default 5000; GPT-OSS uses low reasoning effort |
-| `MAX_UPLOAD_MB` | Default 100 MB |
-| `MAX_DURATION_SECONDS` | Default 180 seconds |
-| `DATA_DIR` | SQLite and private media directory; default `./data` |
-| `APP_PASSWORD` | Optional local HTTP Basic password, any username |
-
-Provider model availability changes and may differ by account. If a model is not available, use the provider console to choose a compatible model and update `.env`. Groq vision calls contain no more than three images per request. Supported Groq models use strict JSON-schema output. Other models use JSON object mode, and Gemini uses JSON MIME output. All outputs receive full local Pydantic validation. Provider schema bounds are validated locally. Retries include field-level validation feedback without echoing content or secrets. Keys are never placed in frontend code or returned by the configuration endpoint. Restart after editing `.env`.
+The image includes FFmpeg and the runtime agent skills. PostgreSQL is supplied through `DATABASE_URL`; Compose does not create a second database service. Local media and caches persist in the `ripple-data` volume. This volume is separate from a host installation’s `data/` directory—copy or mount existing data deliberately when moving installations.
 
 ## Your first simulation
 
-1. Choose Upload or Public link and name the test.
-2. Upload an MP4/MOV/WebM, or paste a public HTTPS URL.
-3. For a link, **supply the real transcript or caption/description**. A URL alone is not enough evidence. For an uploaded silent video, a working vision model or supplied content text is required.
-4. Define audience, goal, message, platform, CTA and panel size.
-5. Review distribution assumptions and consent to sending content to the chosen AI provider.
-6. Run the panel. Leave the server running. A 250-person panel can take many minutes and exceed free-tier quotas.
-7. Explore individual responses, evidence limits, edits, audience segments and cascade assumptions.
-8. Use **Test a new version** to copy audience/assumptions into a new test. Supply the edited video/transcript; then compare the two saved tests.
+1. Select **Simulate your audience** or **New simulation**.
+2. Name the test and upload a video, or add a public link with transcript/caption.
+3. Describe the target audience in plain language. Explain the one idea viewers should remember.
+4. Choose a goal, publishing platform, and CTA. Keep **25 viewers** for the first run.
+5. Review the consent text and run the simulation. Keep the server running.
+6. Watch the analysis stages, then select a viewer to read their response.
+7. Read the top edit, inspect its supporting evidence, and optionally create a what-if version.
 
-For a text/link test, each persona normally needs three tool-selection calls plus one reaction call (at most `AGENT_MAX_TOOL_STEPS + 1`). Add profile batches, one analysis call, and up to `DEEP_MAX_MODEL_CALLS + 1` report calls. Provider retries can multiply these counts. An uploaded video adds frame analysis batches and optional transcription. Running 250 personas means 250 independent agent runs, not one model response pretending to be 250 agents. Check your provider's current pricing and rate limits; see [VALIDATION.md](VALIDATION.md) for the current live-check results.
+Runs may take several minutes because Ripple makes separate provider requests and respects rate limits. It saves completed work instead of substituting scores when a request fails. Resume an interrupted or partial run from the Studio.
 
-## How it works
+## How it works underneath
 
-```text
-Browser → FastAPI → private ingestion → evidence analysis
-        → audience profile generation → N isolated skill/tool loops
-        → validated responses → score aggregation / cluster propagation
-        → Deep Agents specialist synthesis → SQLite results → dashboard / comparison
-```
+The actual LangGraph sequence is:
 
-- **Uploaded media:** ffprobe verifies the real video stream, duration and dimensions. FFmpeg extracts up to seven timestamped JPEG frames and mono audio. Opening, 1-second and 3-second frames are prioritized. Vision interprets on-screen text/captions and visual content; selected provider transcribes speech. The UI displays the actual sampled frames.
-- **Limits of media analysis:** visual analysis is sparse, not continuous motion analysis. Pacing, scene descriptions and attention drop-off are hypotheses. Brief overlays or scenes can be missed; captions are model-inferred, not a guaranteed complete subtitle extraction. Audio is transcribed; there is no detailed sound-design analysis.
-- **Links:** platform hostnames are validated. Official YouTube/TikTok oEmbed endpoints may supply title/author metadata. No embed HTML is rendered and no remote thumbnail is fetched. Instagram, LinkedIn and arbitrary URLs remain URL + supplied-context analysis; there is no protected scraping, cookie harvesting, login bypass or arbitrary URL download. The source preview includes an Open original link. Uploaded videos also have a private local playback endpoint, protected by the same optional workspace password.
-- **Personas:** audience-tailored profiles contain background, motivation, skepticism and viewing context. Each viewer receives isolated context and has no access to other agents' answers. The required scores and reaction fields are extended with `understood`, `shareReason`, `confusion`, `emotion`, `wouldStop`, `wouldFinish`, `likeIntent` and `followIntent` to cover the requested questions.
-- **Durability:** SQLite stores test metadata, status and final results. Atomic local JSON checkpoints preserve profiles, content evidence and completed evaluations. A restart marks running jobs interrupted. Click Retry to resume; successful persona calls are reused. Partial results are shown only when at least half the requested panel (minimum 5) completed. Failed agents are explicitly counted. Recommendation failures do not discard valid agent responses.
-- **Privacy:** original videos, sampled frames, audio, transcripts and checkpoints live in `data/private`, not the static directory. Local same-origin endpoints serve frame previews. Delete a finished test to remove its files and database record. Provider retention is governed by your provider agreement; local deletion cannot delete provider-side records. There is no automatic retention expiry or at-rest encryption in this local edition.
+1. **Content Analysis** — sampled-frame, transcript, hook, and messaging evidence.
+2. **Audience Research** — distinct target/outside audience profiles.
+3. **Viewer Simulation** — separate bounded Groq calls and modeled exposure waves.
+4. **Propagation Analyst** — deterministic sharing arithmetic with explicit assumptions.
+5. **Insights Analyst** — patterns and disagreements grounded in saved source IDs.
+6. **Creative Strategist** — three priority edits and alternative creative directions.
 
+Ask Ripple uses a separate planning → scoped retrieval → grounded answer graph. Six allowlisted files under `skills/` are loaded at execution; their hashes are saved with results.
 
-## Live network and replay
+| Layer | Implementation |
+| --- | --- |
+| API | FastAPI, Pydantic, same-origin mutation checks |
+| AI provider | Groq, paced requests, bounded retries, validated structured output |
+| Orchestration | LangGraph, specialized stages, independent viewer contexts |
+| Database | PostgreSQL / Neon, Psycopg, a bounded connection pool |
+| Recovery | PostgreSQL checkpoints for new runs; preserved SQLite checkpoints for older runs; atomic JSON viewer caches |
+| Media | FFmpeg/ffprobe; private local files, frames, and audio |
+| UI | Build-free JavaScript, CSS, SVG network rendering |
 
-The new Simulation Studio opens during processing and stays available after completion. Each dot is an actual generated persona profile, with a separate model inference for its reaction. Profiles are grouped by intended versus outside audience. Colors update only after real returned reactions; failed requests have a separate state. Click or keyboard-select a node to inspect its profile, understanding, action, reasons to share, objection, and recommended edit.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for state flow, cache invalidation, persistence, and framework choices. [FEATURE_MAP.md](FEATURE_MAP.md) maps controls to implementation and checks.
 
-The layout itself is deterministic geometry so it remains stable while inspecting. This does not generate scores. The 3D mode projects the same graph with depth and lets you rotate it; it does not add extra people or rerun models. Zoom, reset, action/cohort filters and a hover card are available.
+## Data, privacy, and operating limits
 
-For new tests, approximately 16% of profiles receive seed exposure, stratified across archetypes. A returned share response can expose assumed contacts in the next wave, for up to four waves including the seed. A weighted share × relevance × sentiment index must reach .28 and the agent must either choose `share` or have share intent of at least 60. Up to three contacts are exposed, with similar-archetype links and explicit cross-cohort bridges. All contacts and thresholds are assumptions. This is not a reproduction of Instagram's private algorithm.
-
-Unreached viewers are independently evaluated as direct-test holdouts. Their opinions remain useful for feedback and target/outside comparison, but they do **not** count as cascade reach. The graph's finite-panel reach is shown separately from the original wider exposure-range sensitivity model in Insights. Scores in the original report summarize the combined panel; the Studio also shows cohort-specific relevance and share intent.
-
-Replay reveals saved agent events. Its speed/slider change presentation only and make no AI calls. Summary metrics below the graph remain the final run totals while replay is active. Replaying an old run never invents missing historical events. No reference-video assets, reference participants, or Guildly features are bundled.
-
-## Provider reliability and diagnostics
-
-- Default Groq text model is `openai/gpt-oss-20b`; configurable per `.env`.
-- Model configuration validates common paste errors: keys accidentally put in model fields and comments attached to model IDs.
-- Calls are paced (4 seconds by default), with a shared cooldown per provider/key. Numeric/date Retry-After is honored. A reset longer than 180 seconds pauses rather than retrying early.
-- Permanent HTTP errors and exhausted 429 retries pause remaining new persona requests. Invalid JSON receives a bounded retry with field-level correction. Full successful responses are checkpointed atomically.
-- The activity feed and errors panel show provider/model/status/error code. Raw provider messages and failed-generation bodies are not displayed because they can echo private content.
-- `python check_setup.py` performs local checks without printing keys. `python check_setup.py --groq` queries Groq's official model list. It makes no generation request and cannot guarantee all account permissions/capabilities.
-- Automated tests use isolated model fixtures, not a production demo fallback. See VALIDATION.md for live provider checks and remaining limits. Prediction quality is not empirically validated.
-
-## What the numbers mean
-
-All outcomes are **AI-modeled estimates, not guaranteed platform performance or real historical analytics**. Synthetic personas are not representative human participants. Separate requests to the same base model can have correlated biases.
-
-- Scores are arithmetic means of completed agents' stated subjective judgments (0–100), not measured probabilities.
-- Verdict: relevance below 45 → Low relevance; otherwise hook below 55 → Needs stronger hook; otherwise hook, relevance and share intent all at least 75 → Strong niche hit; otherwise Promising.
-- Sharing propensity per segment = mean of `shareIntent/100 × relevanceScore/100 × sentimentFactor`. Sentiment factors: positive 1, mixed .75, neutral .65, negative .35.
-- New exposures = current exposures × propensity × **.06 intent-realization prior** × contacts per share × **.65^depth**. A **.65 within-segment affinity** plus **.35 panel-weighted cross-segment allocation** produces the cluster network. The export includes the complete edge list; the dashboard shows wave totals and segment fit.
-- Reach range = seed × .6–1.4 plus secondary exposures × .3–2.0. This is an uncalibrated sensitivity envelope, not a statistical interval. Exposures are not deduplicated unique people; platform ranking and real account follower graphs are absent.
-- Engagement rate = average maximum like/save/comment/share/click intent × **.12 realization prior**. This is a transparent heuristic, not a learned platform probability.
-- Confidence = `(15 + evidencePoints × .6) × completed/requested`, capped at 75. Evidence points: metadata 25, vision 30, transcript 25, caption 10, oEmbed 10. This measures available input and execution completeness, not probability of accuracy. Confidence can be lower for incomplete or link-only analysis.
-- Panel size explores more opinions but does not supply empirical validation, representative sampling, or narrower statistical uncertainty.
-
-All coefficients are visible in `app/simulation.py`, the Method page, and each result's exported assumptions. Use actual published outcomes and real human feedback to calibrate before using these numbers for spend or forecasting decisions. No guaranteed uplift is shown.
-
-## Architecture / files
-
-```text
-ripple/
-  .env.example          Server configuration template
-  requirements.txt      Pinned Python dependencies
-  run.py                Loopback-only local entry point
-  check_setup.py        Local checks and optional --groq model discovery
-  UPGRADE.md            Preserve your existing key and saved tests
-  FEATURE_MAP.md        Visible reference features and implementation notes
-  Dockerfile            Optional Python + FFmpeg container
-  compose.yaml          Local Docker setup and durable volume
-  app/
-    main.py             API, upload limits, security middleware, job lifecycle
-    schemas.py          Input, analysis, persona and recommendation validation
-    providers.py        Groq / Gemini adapters, JSON retries and transcription
-    media.py            FFmpeg extraction, URL validation and official oEmbed
-    simulation.py       Independent evaluations, checkpoints and wave orchestration
-    network.py          Synthetic topology, sharing rules and cohort statistics
-    store.py            SQLite persistence
-    static/
-      index.html        Application shell
-      styles.css        Responsive dark interface, no external assets
-      app.js            Form, reports, history and comparison
-      network.js        Interactive SVG renderer: selection, zoom, pan and 3D projection
-      studio.js         Live workspace, inspector, event replay and themes
-      studio.css        Reference-inspired studio and light-theme styling
-  tests/
-    test_core.py        Security, media and isolated simulation tests
-    test_v2.py          Network, strict output, error privacy and quota regression tests
-  RESEARCH.md           Sources and supplied-video provenance
-```
-
-## API
-
-`GET /api/config`, `POST /api/preview`, `GET/POST /api/tests`, `GET/DELETE /api/tests/{id}`, `POST /api/tests/{id}/retry`, `GET /api/tests/{id}/export`, `GET /api/tests/{id}/frames/{name}`, `GET /api/tests/{id}/live`, `GET /api/tests/{id}/video`, and `POST /api/providers/groq/check`.
-
-Mutation requests require the `X-Ripple-Client: 1` header and same-origin browser context. Creation accepts multipart `payload` (TestInput JSON (now also `outsidePercent` 0–50 and optional `outsideAudience`)) plus optional `video`. Built-in API docs are disabled. The app accepts only loopback/test hostnames by default. This is intentionally a single-process server; do not start multiple Uvicorn workers against its in-memory job registry.
-
-## Tests
-
-```bash
-python -m pytest -q
-```
-
-FFmpeg is needed for the real ingestion test. Tests use a temporary data directory and do not call live providers. They verify score bounds, independent per-persona calls, partial failures, checkpoint resume, URL validation, cross-origin protection, password checks, nonpublic storage and actual media extraction.
-
-## Deployment readiness — honest scope
-
-This is a complete local implementation, **not a certified production-ready multi-tenant SaaS**. It has useful production-oriented foundations: bounded file/request sizes, strict schemas, provider timeouts, retries, file isolation, same-origin checks, private data paths, SQLite durability and checkpoints. Before public commercial deployment, add and validate:
-
-- Real account authentication, per-user authorization and tenant isolation on every test/media route.
-- Durable distributed queue and workers, cancellation, scheduling, per-account budget/rate limits and idempotency.
-- TLS, encrypted object storage, encryption at rest, managed secrets and restrictive storage permissions.
-- Malware/content inspection and strongly isolated FFmpeg workers. Keep FFmpeg/dependencies patched.
-- Central observability with redacted logs, retention policies, deletion/export guarantees and provider data agreements.
-- Backup/restore procedures, load tests, dependency/security scanning and operational monitoring.
-- Measured calibration against actual audience studies and platform outcomes; explicitly version coefficients and prompts.
-
-The optional Basic password protects a local workspace, not separate users. Media processing uses restricted input protocols and subprocess timeouts but is not a complete hostile-file sandbox. Use only trusted uploads in this local edition. Do not expose port 8000 directly to the internet.
+- Simulation history/results and new graph checkpoints are stored in your PostgreSQL database. With Neon, that storage is remote.
+- Uploaded media, sampled frames, JSON response caches, version metadata, and the local chat transcript remain under `DATA_DIR` (default `data/`). Back up **both PostgreSQL and this directory**.
+- Groq receives submitted content context, sampled frames/audio when applicable, and audience descriptions. Provider retention follows your provider agreement.
+- No account connection, real follower graph, actual retention measurement, or live social analytics is available.
+- Sharing scenarios use uncalibrated assumptions: 6% sharing-intent realization, 0.65 wave decay, 65% within-cluster affinity, and four exposure waves. Engagement uses a separate 12% realization prior.
+- The visual contact network has its own seed/delivery rules. Unreached viewers are independently evaluated as controls and do not count as cascade reach.
+- This remains a **single-user, single-process workspace**. A polished UI and PostgreSQL do not provide multi-tenant authentication, a distributed job queue, or production SaaS operations. `APP_PASSWORD` is optional local workspace protection. The default server binds to `127.0.0.1`.
 
 ## Troubleshooting
 
-- **Missing key:** edit `.env` in the project root and restart. Do not paste keys in the web UI.
-- **401/403 from provider:** check key/model permissions and account status.
-- **429 or slow panel:** reduce `AGENT_CONCURRENCY` to 1, wait for quota and Retry. Saved successful calls are reused.
-- **Vision unavailable:** verify `GROQ_VISION_MODEL`. Supply transcript/caption to allow explicitly limited text-based evaluation, or use Gemini.
-- **FFmpeg missing:** check `ffmpeg -version` and `ffprobe -version` in the same terminal, or use Docker.
-- **Invalid video:** confirm MP4/MOV/WebM, under the size/duration limit, and at most 4K frame dimensions. File extension alone is never treated as validation.
-- **Server restarted:** open the interrupted test in Test library and Retry.
-- **Need full analysis of a link:** upload your authorized original video; no restricted media scraping is provided.
+| Problem | What to check |
+| --- | --- |
+| PostgreSQL will not connect | Run `check_setup.py --database`. Check `.env`, database availability, network access, and TLS parameters. The check hides credentials. |
+| Neon pooled URL | Ripple uses the corresponding direct Neon hostname with its own bounded pool, allowing session-specific schema selection and checkpoint setup. Your `.env` is not rewritten. |
+| Video analysis fails immediately | Confirm `ffmpeg -version` and `ffprobe -version` work in the same terminal. Check file size and duration. |
+| A link provides little evidence | Supply its actual transcript/caption or upload the original video. A public URL alone is not downloadable media access. |
+| Groq model error | Open **Provider setup**, check available model IDs, update `.env`, then restart. |
+| Rate limit or paused simulation | Wait for the provider cooldown, then choose **Resume simulation**. Keep concurrency low. Completed viewer responses are reused. |
+| No reactions or incomplete suggestions | Read the surfaced error. Ripple does not fabricate missing work. Resume after correcting the issue. |
+| Previous media missing after moving machines | Restore `DATA_DIR` as well as the database. PostgreSQL does not contain the uploaded video files. |
+
+## Development and validation
+
+Python integration tests run in a unique temporary PostgreSQL schema and remove that schema afterward. They use fixture providers, not paid Groq generations. The database role must be allowed to create a schema. Use a dedicated development database if preferred.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q --basetemp=artifacts/pytest-check
+npm.cmd install --prefix artifacts/ui-check --no-audit --no-fund jsdom@30.1.1 playwright@1.58.2
+node tests/frontend.cjs
+node tests/browser.cjs
+```
+
+The browser suite uses installed Chrome, an isolated fixture HTTP server, and headless rendering. It checks the interactive flows and responsive layouts and refreshes the screenshots under `docs/screenshots/`. On macOS/Linux, use `python` and `npm` equivalents. Test tooling under `artifacts/` is not a runtime dependency.
+
+See [VALIDATION.md](VALIDATION.md) for checks actually run and their limits.
+
+## API and project guide
+
+Existing API routes are retained:
+
+- Configuration, provider availability, and source preview: `/api/config`, `/api/providers/groq/check`, `/api/preview`.
+- Create/list/open/delete simulations: `/api/tests`, `/api/tests/{id}`.
+- Resume, live network, private video/frames, and JSON export: `/api/tests/{id}/retry`, `/live`, `/video`, `/frames/{name}`, `/export`.
+- Versions, comparisons, chat, and reports: `/api/tests/{id}/versions`, `/compare/{other}`, `/chat`, `/report`.
+
+Mutation requests require `X-Ripple-Client: 1` and pass same-origin checks. Model keys and database credentials are never part of browser configuration.
+
+| File / directory | Start here for… |
+| --- | --- |
+| `app/main.py` | API routes and request boundaries |
+| `app/agents/` | Analysis, viewers, insights, strategy, and chat |
+| `app/store.py`, `app/checkpoints.py` | PostgreSQL, migration, checkpoint recovery |
+| `app/static/` | Landing page, workspace, network, and visual design |
+| `skills/` | Runtime instructions for the six agent stages |
+| `tests/` | Backend, DOM, and browser regression checks |
+
+Visual inspiration: [Shift Studio by Elux Space](https://dribbble.com/shots/27104940-Shift-Studio-Digital-Agency-Hero-Animation). Ripple uses its own audience-network identity and implementation.
