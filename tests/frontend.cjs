@@ -2,11 +2,15 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const {JSDOM}=require('../artifacts/ui-check/node_modules/jsdom');
+const {JSDOM}=require('jsdom');
 const html=fs.readFileSync('app/static/index.html','utf8');
-const dom=new JSDOM(html,{url:'http://localhost:8000',runScripts:'outside-only'});
+const dom=new JSDOM(html,{url:'http://localhost:8000',runScripts:'outside-only',pretendToBeVisual:true});
 const w=dom.window;
 w.scrollTo=()=>{};
+w.matchMedia=()=>({matches:true,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+w.IntersectionObserver=class{observe(){} unobserve(){} disconnect(){}};
+w.ResizeObserver=class{observe(){} unobserve(){} disconnect(){}};
+w.HTMLElement.prototype.scrollIntoView=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};
 w.HTMLDialogElement.prototype.close=function(){this.open=false};
 const profile={personaName:'001 · Test viewer',personaType:'Designer',background:'Independent designer',motivation:'Save time',skepticism:'Needs evidence',viewingContext:'Lunch',audienceGroup:'target'};
@@ -28,7 +32,7 @@ w.fetch=async(url,opts={})=>{
  else throw Error('Unmocked route '+route);
  return {ok:true,json:async()=>structuredClone(body)};
 };
-for(const file of ['landing.js','experience.js','network.js','app.js','studio.js','workspace.js'])vm.runInContext(fs.readFileSync('app/static/'+file,'utf8'),dom.getInternalVMContext(),{filename:file});
+for(const file of ['experience-react.js','landing.js','experience.js','network.js','app.js','studio.js','workspace.js'])vm.runInContext(fs.readFileSync('app/static/'+file,'utf8'),dom.getInternalVMContext(),{filename:file});
 const tick=()=>new Promise(r=>setTimeout(r,20));
 (async()=>{
  await tick();assert(w.document.querySelector('#hero-title'),'Landing must introduce the product');await w.navigate('studio');assert(w.document.querySelector('#firstSimulation'),'Empty Studio must have a working start action');

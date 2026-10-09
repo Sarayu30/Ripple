@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const http=require('node:http');
-const {chromium}=require('../artifacts/ui-check/node_modules/playwright');
+const {chromium}=require('playwright');
 const metrics={hookScore:76,retentionScore:67,clarityScore:80,relevanceScore:78,trustScore:62,shareIntent:56,saveIntent:72,commentIntent:42,clickIntent:48,conversionIntent:35,likeIntent:70,followIntent:40};
 const profiles=Array.from({length:25},(_,i)=>({personaName:String(i+1).padStart(3,'0')+' · '+['Independent designer','Studio founder','Creative freelancer','Brand strategist','Curious newcomer'][i%5],personaType:['Independent designers','Studio founders','Creative freelancers','Brand strategists','Outside audience'][i%5],background:'A sample creative professional exploring better project workflows.',motivation:'Turn a useful idea into a practical habit.',skepticism:'Needs a concrete example before trusting a new workflow.',viewingContext:'A quick scroll during a break.',audienceGroup:i%5===4?'outside':'target'}));
 const reactions=profiles.map((p,i)=>({...metrics,personaName:p.personaName,personaType:p.personaType,clarityScore:i%5===4?55:85,likelyAction:i%5===0?'share':i%5===4?'scroll':'save',wouldStop:i%5!==4,wouldFinish:i%5!==4,sentiment:i%7===6?'negative':i%5===4?'neutral':'positive',reaction:'The three-step checklist feels useful. I would save it for my next client project, but I want to see the finished result first.',objection:'The promise is clear; the proof comes too late.',recommendedEdit:'Open with the finished mood board, then show the three steps.',understood:'A repeatable workflow for a stronger client mood board.',shareReason:'A practical checklist could help another designer.',emotion:'curiosity',confusion:'How long does each step take?'}));
@@ -30,10 +30,10 @@ const server=http.createServer((req,res)=>{
   res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(body));return;
  }
  const name=req.url==='/'?'index.html':req.url.replace('/static/','');
- if(!/^[a-z.-]+$/.test(name)){res.writeHead(404);res.end();return}
+ if(!/^[a-z0-9.-]+$/.test(name)){res.writeHead(404);res.end();return}
  const file=path.join(__dirname,'../app/static',name);
  if(!fs.existsSync(file)){res.writeHead(404);res.end();return}
- res.setHeader('Content-Type',name.endsWith('.css')?'text/css':name.endsWith('.js')?'text/javascript':'text/html');res.end(fs.readFileSync(file));
+ res.setHeader('Content-Type',name.endsWith('.css')?'text/css':name.endsWith('.js')?'text/javascript':name.endsWith('.woff2')?'font/woff2':'text/html');res.end(fs.readFileSync(file));
 });
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -43,8 +43,29 @@ const server=http.createServer((req,res)=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const base='http://127.0.0.1:'+server.address().port;
  const shot=async(name,fullPage=false)=>{await page.mouse.move(0,0);fs.mkdirSync('docs/screenshots',{recursive:true});await page.screenshot({path:'docs/screenshots/'+name+'.png',fullPage,animations:'disabled'})};
- await page.goto(base);await page.locator('#hero-title').waitFor();
+ await page.goto(base);await page.locator('#hero-title').waitFor();await page.evaluate(()=>document.fonts.ready);
  assert.equal(await page.locator('.art-node').count(),68);await shot('01-landing');
+ // New React interactions must carry real user input into the existing form.
+ await page.locator('#contentIdea').fill('Show the finished mood board before the process.');
+ await page.locator('.composer-source button').last().click();
+ await page.locator('.composer-bottom button[type=submit]').click();
+ assert.equal(await page.locator('[name=angle]').inputValue(),'Show the finished mood board before the process.');
+ assert(await page.locator('#linkArea').isVisible());
+ await page.locator('[name=title]').fill('My audience rehearsal');
+ await page.locator('[name=audience]').fill('Independent designers');
+ await page.locator('[name=size][value="50"]').check();
+ assert((await page.locator('.brief-receipt').innerText()).includes('My audience rehearsal'));
+ assert((await page.locator('.brief-receipt').innerText()).includes('Independent designers'));
+ assert((await page.locator('.brief-receipt').innerText()).includes('50 simulated'));
+ await page.evaluate(()=>navigate('home'));
+ await page.locator('.perspective-tab').first().focus();await page.keyboard.press('ArrowDown');
+ assert.equal(await page.locator('.perspective-tab').nth(1).getAttribute('aria-pressed'),'true');
+ await page.locator('.r-motion-toggle').click();assert.equal(await page.locator('.r-motion-toggle').getAttribute('aria-pressed'),'true');
+ await page.locator('.rehearsal-composer input[type=file]').setInputFiles({name:'draft.mp4',mimeType:'video/mp4',buffer:Buffer.from('fixture')});
+ await page.locator('.composer-bottom button[type=submit]').click();
+ assert.equal(await page.locator('#video').evaluate(el=>el.files[0].name),'draft.mp4');
+ assert(await page.locator('.local-preview').isVisible());
+ await page.evaluate(()=>navigate('home'));
  await page.locator('[data-go=new]').first().click();await page.locator('#testForm').waitFor();await shot('02-new-simulation',true);
  await page.locator('[data-source=link]').click();assert(await page.locator('#linkArea').isVisible());assert(await page.locator('#testForm details').first().getAttribute('open')!==null);
  await page.locator('[data-source=upload]').click();
@@ -53,6 +74,8 @@ const server=http.createServer((req,res)=>{
  assert((await page.locator('.local-preview').getAttribute('src')).startsWith('blob:'));
  await page.locator('[data-page=studio]').click();await page.locator('.agent-node').first().waitFor();
  assert.equal(await page.locator('.agent-node').count(),25);
+ await page.locator('.content-ribbon-toggle').click();await page.locator('.content-ribbon-detail').waitFor({state:'visible'});
+ assert((await page.locator('.content-ribbon-detail').innerText()).includes(payload.angle));await page.locator('.content-ribbon-toggle').click();
  // Label documentation examples in the page, without altering production templates.
  await page.evaluate(()=>{const badge=document.createElement('span');badge.id='documentationBadge';badge.textContent='DOCUMENTATION EXAMPLE · TEST FIXTURE DATA';badge.style.cssText='position:fixed;bottom:12px;left:250px;z-index:100;padding:8px 12px;background:#121917;color:#a0aea7;border:1px solid #2a3631;font:10px monospace;pointer-events:none';document.body.append(badge)});
  await page.locator('[data-node="0"]').click();assert((await page.locator('#agentInspector').innerText()).includes('Why they reacted'));
@@ -76,7 +99,7 @@ const server=http.createServer((req,res)=>{
  await page.locator('#askNav').click();await page.locator('#chatQuestion').fill('What should I change in the opening?');await page.locator('#chatForm button[type=submit]').click();await page.locator('.chat-message:not(.user)').waitFor();await shot('04-ask-ripple');await page.keyboard.press('Escape');
  await page.locator('[data-page=compare]').click();await page.locator('#compareButton').click();await page.locator('#comparison table').waitFor();await shot('05-compare-versions',true);
  await page.locator('#createExperiment').click();await page.locator('[name=hook]').fill('Start with the finished mood board');await page.locator('[name=approved]').check();await page.locator('#experimentForm button[type=submit]').click();await page.locator('#networkCanvas').waitFor();assert.equal(submitted,1);
- await page.locator('#themeToggle').click();await shot('07-light-studio',true);assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await page.locator('#themeToggle').click();
+ assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await shot('07-light-studio',true);await page.locator('#themeToggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await shot('08-dark-studio',true);await page.locator('#themeToggle').click();
  await page.evaluate(()=>document.querySelector('#documentationBadge')?.remove());
  for(const width of [768,390]){
   await page.setViewportSize({width,height:900});
@@ -87,6 +110,13 @@ const server=http.createServer((req,res)=>{
    if(width===390&&view==='home')await shot('06-mobile-landing',true);
   }
  }
- assert.deepEqual(errors,[]);console.log('PASS: Chromium navigation, 2D/3D, filters, replay, inspector, full analysis, suggestions, chat, approved versions, comparison, themes, and 16 responsive page checks. Seven screenshots captured.');
+ // Exercise the animated path too; all other captures use reduced motion.
+ const motionPage=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'no-preference'});
+ motionPage.on('pageerror',e=>errors.push(e.message));await motionPage.goto(base);await motionPage.locator('#hero-title').waitFor();
+ await motionPage.locator('.r-rehearsal').scrollIntoViewIfNeeded();
+ await motionPage.waitForFunction(()=>getComputedStyle(document.querySelector('.r-atmosphere i')).animationPlayState==='running');
+ await motionPage.locator('.r-motion-toggle').click();assert.equal(await motionPage.locator('.r-atmosphere i').first().evaluate(el=>getComputedStyle(el).animationPlayState),'paused');
+ await motionPage.close();
+ assert.deepEqual(errors,[]);console.log('PASS: React composer/file handoff, live brief, audience tabs, motion pause, content ribbon; Studio controls/chat/comparison; light/dark themes; 16 responsive page checks. Eight screenshots captured.');
  }finally{await browser.close();server.close()}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1});
