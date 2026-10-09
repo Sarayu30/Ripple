@@ -6,6 +6,11 @@ The redesign keeps the existing API paths, Groq provider behavior, six agent sta
 
 | Existing capability | Where it is accessible now | Verification |
 | --- | --- | --- |
+| Idea and attached-video handoff | Homepage content composer → New simulation | Browser checks draft text, source tab, File transfer and local preview |
+| Live creative brief | New simulation companion | Browser checks name, audience and panel-size updates |
+| Audience perspective introduction | Keyboard-accessible audience lens | Browser selection and arrow-key checks; illustration clearly labeled |
+| Original input context | Studio content ribbon above the metrics | Browser expansion and saved-angle assertion |
+| Ambient movement control | Homepage Pause motion; system reduced motion | Separate Chrome contexts exercise both motion preferences and pause |
 | Video upload and source preview | New simulation; local video preview, upload controls | Browser input visibility; Python FFmpeg extraction and HTTP boundaries |
 | Public links, transcript, caption | New simulation → Paste a link | DOM and browser tab/disclosure checks; URL validation tests |
 | Audience, outside share, platform, goal, CTA | New simulation form; original field names retained | DOM checks; schema and workflow tests |

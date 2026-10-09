@@ -2,7 +2,7 @@
 
 ## Runtime boundaries
 
-FastAPI owns request validation, same-origin checks, bounded uploads, job admission and local workspace authentication. Simulation history lives in PostgreSQL; existing SQLite history is imported without modifying its source. Private-media paths are preserved. The UI remains vanilla JavaScript and SVG, with no build step.
+FastAPI owns request validation, same-origin checks, bounded uploads, job admission and local workspace authentication. Simulation history lives in PostgreSQL; existing SQLite history is imported without modifying its source. Private-media paths are preserved. React and Motion power the introduction and contextual workspace components; the existing JavaScript dispatcher and SVG network retain the simulation behavior. Built assets are committed, so running the Python app requires no Node installation.
 
 - `app/agents/orchestrator.py`: typed LangGraph state, six specialized stages, durable checkpoints, progress and execution trace.
 - `app/store.py`: bounded Psycopg connection pool, PostgreSQL history, transactional legacy import, and deletion of associated PostgreSQL checkpoint rows.
@@ -15,7 +15,10 @@ FastAPI owns request validation, same-origin checks, bounded uploads, job admiss
 - `experiments.py`: immutable child runs, cache reuse/invalidation and saved-result comparison.
 - `reports.py`: creator-ready Markdown built from stored outputs.
 - `schemas.py`: strict Pydantic models including experiments, insights, tool plans and chat.
-- `static/landing.js`, `redesign.css`: editorial introduction, illustrative SVG network, responsive dark/light design and reduced-motion behavior.
+- `frontend/experience.jsx`: React introduction, draft/file handoff, live creative brief, content context ribbon, and Lucide navigation icons.
+- `frontend/experience.css`: rose/apricot/charcoal design, local variable fonts, responsive layouts, ambient motion and light/dark workspace themes.
+- `frontend/build.mjs`: esbuild bundles React/Motion into `static/experience-react.js` and CSS; copies local fonts and their licenses. No browser CDN requests are required.
+- `static/landing.js`, `redesign.css`: fallback introduction and retained component layout foundation.
 - `static/studio.js`, `workspace.js`, `network.js`, `experience.js`: Studio, drawers, experiments, 2D/3D network, replay, and full diagnostic access. Earlier stylesheet layers remain for compatible component layouts.
 
 ## State and recovery
@@ -37,6 +40,10 @@ References: [Psycopg row factories](https://www.psycopg.org/psycopg3/docs/advanc
 ## UI state and feature access
 
 The introduction is the default view; hashes link to Studio, new simulation, history, library, comparison, method, and setup. The existing route dispatcher and API contracts remain. The landing network is explicitly labeled illustrative and uses deterministic SVG geometry. Actual Studio node colors and metrics come exclusively from returned saved reactions.
+
+React roots mount only into the introduction, setup companion, content ribbon, and navigation icon containers. `RippleExperience.dispose()` unmounts page roots before the dispatcher replaces their DOM. Navigation icon roots persist. The existing form owns submission, provider consent, file validation, and API calls. The homepage composer carries its draft and optional File into that form in browser memory; it does not submit a simulation. The brief subscribes to form events and disconnects its listeners and section observer on unmount.
+
+Motion supplies entrance reveals, scroll-linked floating labels, button feedback and the content-ribbon expansion. CSS supplies the ambient atmosphere and illustrative audience pulse. The introduction has a pause control for ambient motion and honors system reduced-motion preferences. Studio defaults to the light palette for a new browser; an existing theme preference is retained. Local Manrope and DM Sans fonts include their OFL licenses.
 
 Replay uses the renderer's existing event cutoff; the inspector obeys that cutoff too, so a future response cannot appear early. Leaving the Studio clears replay and polling timers. Video previews use object URLs released on replacement/navigation. Theme preference is stored locally. Dialogs use native modal focus handling with Escape and focus restoration. Reduced-motion CSS disables decorative animations; the replay button remains an intentional user control.
 

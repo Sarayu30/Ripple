@@ -1,6 +1,16 @@
 # Validation performed
 
-Updated: 2026-10-07.
+Updated: 2026-10-09. The React UI checks below are current; the PostgreSQL/backend checks record the earlier migration verification.
+
+## React redesign verification — October 9
+
+- `npm run build` passed. The committed React/Motion bundle, stylesheet, fonts and license files build from the pinned lockfile. `npm install` reported zero dependency vulnerabilities at installation time.
+- `npm run test:ui` passed with the real React bundle loaded in jsdom, alongside the existing dispatcher, SVG renderer and workspace scripts.
+- `npm run test:browser` passed in headless Chrome. New assertions cover draft text/source handoff, attached-file transfer and preview, live brief changes, audience-lens keyboard controls, saved content-ribbon details and light/dark themes.
+- Existing map, 2D/3D, zoom, pan, fullscreen, filters, replay cutoff, inspector, diagnostics, suggestions, chat, approved version creation and comparison checks still pass. All 16 responsive overflow checks pass at 390px and 768px.
+- A separate browser context starts with motion enabled and verifies the ambient animation and pause control. Screenshot contexts use reduced motion. No JavaScript page errors were captured.
+- Eight updated screenshots were captured from the isolated fixture server and visually reviewed. They contain no private media, real user results, database credentials or paid provider calls.
+- No backend or database implementation changed in this UI pass; the Python suite was not repeated. No new real-provider simulation, deployment or Docker image build was performed.
 
 ## PostgreSQL and backend
 
@@ -37,7 +47,7 @@ The headless Chrome suite passed:
 - Light/dark toggle, native dialog Escape behavior, and absence of JavaScript page errors.
 - **16 horizontal-overflow checks** covering eight main pages at 390px and 768px, in addition to 1440px desktop captures.
 
-Seven PNG screenshots under `docs/screenshots/` were rendered and visually reviewed: introduction, input setup, audience Studio, Ask Ripple, comparison, mobile introduction and light Studio. Result screenshots are labeled documentation fixtures. The fixture server reads no production database, `.env`, private content or provider credentials. It cannot run paid model calls.
+Eight PNG screenshots under `docs/screenshots/` show the introduction, input setup, audience Studio, Ask Ripple, comparison, mobile introduction, light Studio and dark Studio. Result screenshots are labeled documentation fixtures. The fixture server reads no production database, `.env`, private content or provider credentials. It cannot run paid model calls.
 
 CSS reduced-motion rules disable decorative movement; the browser captures and checks run with reduced motion enabled. This is not a formal accessibility audit, screen-reader certification, cross-browser matrix or touch-device usability study.
 
