@@ -1,12 +1,14 @@
 # Ripple
 
-### Know how your content lands before you post.
+### Every post starts a ripple. Make yours land.
 
 Ripple gives your content a rehearsal audience. Upload a short video or add a public link with its transcript or caption, describe who you want to reach, and explore how different **AI-simulated viewers** might respond. See what connects, why someone might scroll, and which edits are worth testing next.
 
-![Ripple’s introduction with an animated audience illustration](docs/screenshots/01-landing.png)
+![Ripple's new content rehearsal: editorial typography, a rose-and-apricot animated stage, and an idea composer](docs/screenshots/01-landing.png)
 
-**Start here:** select **Simulate your audience** to test content, or **Open Studio** to return to saved work. The connected dots introduce the idea of an audience with different perspectives; this opening illustration is not a simulation result.
+**Start here:** select **Simulate your audience** to open setup, or type an idea and attach a video in the central composer. The composer carries your draft into the setup form, where you choose the audience and review consent before running anything. **Open Studio** returns to saved work.
+
+Scroll down to explore **The audience lens**: three perspectives explain the intended audience, outside viewers, and individual reasoning. Its connected dots are an illustration, not simulation results. Ambient color movement, gentle scroll effects and the lens animation respect reduced-motion preferences; **Pause motion** stops the ambient movement.
 
 **[Who it’s for](#who-is-ripple-for)** · **[See the screenshots](#see-ripple-in-screenshots)** · **[Setup](#run-ripple-locally)** · **[First simulation](#your-first-simulation)** · **[Troubleshooting](#troubleshooting)**
 
@@ -50,6 +52,8 @@ Upload MP4, MOV, or WebM, preview the selected video, and describe the intended 
 
 **Why it helps:** the same idea can land differently with different people. Setting the audience and goal gives the feedback useful context.
 
+**The right-hand companion is live:** its creative brief updates with your test name, audience, platform and panel size. Select **The content**, **The audience**, or **The rehearsal** to jump to that section of the form. This gives you a quick way to review the context before submitting.
+
 - Start with **25 viewers** to keep the first run small. Larger panels increase API usage, not proven accuracy.
 - Uploads are limited to **100 MB and 180 seconds by default**, configurable on the server.
 - A link does not grant access to its video. Upload the original file for actual sampled-frame and audio analysis.
@@ -64,6 +68,7 @@ Each dot is one simulated viewer. Select a dot to see the reaction, the reason b
 **What you’re looking at:**
 
 - **Across the top:** a summary of completed viewers, message clarity, and sharing responses, followed by the analysis stages.
+- **Above the metrics:** expand **The content behind these reactions** to revisit the original idea, intended audience and call to action while reading the results.
 - **In the map:** dots represent viewers; colors distinguish their returned reactions. Use the filters to explore one audience or response type.
 - **On the right:** **About this viewer** explains the selected person’s reaction. Switch between **Thoughts**, **Profile**, and **Connections** for more context.
 - **Below the map:** replay controls, a labeled legend, the main findings, and the suggested next edit.
@@ -135,13 +140,17 @@ The interface supports dark and light themes, desktop/tablet/mobile layouts, key
 
 ### 7. Choose a comfortable theme
 
-The audience-map screenshot above shows dark mode; the recommendations screenshot shows light mode. Both keep the map, filters, 2D/3D controls, replay, recommendations, and evidence sections available. Use the theme button in the top-right corner; Ripple remembers your preference in this browser.
+New browsers start with a warm paper theme. Switch to the charcoal-and-rose theme using the button in the top-right corner; Ripple remembers your preference. Both themes keep the same map, filters, 2D/3D controls, replay, recommendations and evidence sections.
+
+![Ripple Studio in the charcoal-and-rose dark theme, with the audience map and recommendations](docs/screenshots/08-dark-studio.png)
+
+**What changes:** the visual palette. Your selected simulation, saved results and available controls stay the same. The public introduction keeps its rose-and-apricot canvas in either workspace theme.
 
 ### 8. Explore Ripple on a smaller screen
 
 <img src="docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
 
-**On mobile:** the introduction stacks into a single column, with the simulation button followed by the audience illustration and a three-step explanation. The workspace also reorganizes for smaller screens, keeping its navigation and controls accessible.
+**On mobile:** the introduction stacks into a single column, with the simulation button followed by the working idea composer. Further down, the audience lens and three-step explanation remain available. The workspace also reorganizes for smaller screens, keeping navigation, form fields, map controls and evidence accessible.
 
 ## Run Ripple locally
 
@@ -152,7 +161,7 @@ You need:
 3. A **PostgreSQL database**. A Neon project works; keep the TLS parameters in its connection string.
 4. **FFmpeg and ffprobe** on your PATH for uploaded-video analysis. They are not needed for transcript/caption-only link tests.
 
-No Node installation or frontend build is needed to run Ripple. Node is only used for optional UI development checks.
+No Node installation or frontend build is needed to run Ripple: the built React assets ship in the repository. Node is needed only when changing the frontend source or running its development checks.
 
 ### Windows PowerShell
 
@@ -252,7 +261,7 @@ Ask Ripple uses a separate planning → scoped retrieval → grounded answer gra
 | Database | PostgreSQL / Neon, Psycopg, a bounded connection pool |
 | Recovery | PostgreSQL checkpoints for new runs; preserved SQLite checkpoints for older runs; atomic JSON viewer caches |
 | Media | FFmpeg/ffprobe; private local files, frames, and audio |
-| UI | Build-free JavaScript, CSS, SVG network rendering |
+| UI | React, Motion, Lucide icons, local variable fonts, CSS and the existing SVG simulation renderer; prebuilt assets included |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for state flow, cache invalidation, persistence, and framework choices. [FEATURE_MAP.md](FEATURE_MAP.md) maps controls to implementation and checks.
 
@@ -285,12 +294,15 @@ Python integration tests run in a unique temporary PostgreSQL schema and remove 
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q --basetemp=artifacts/pytest-check
-npm.cmd install --prefix artifacts/ui-check --no-audit --no-fund jsdom@30.1.1 playwright@1.58.2
-node tests/frontend.cjs
-node tests/browser.cjs
+npm.cmd ci
+npm.cmd run build
+npm.cmd run test:ui
+npm.cmd run test:browser
 ```
 
-The browser suite uses installed Chrome, an isolated fixture HTTP server, and headless rendering. It checks the interactive flows and responsive layouts and refreshes the screenshots under `docs/screenshots/`. On macOS/Linux, use `python` and `npm` equivalents. Test tooling under `artifacts/` is not a runtime dependency.
+For UI development, use **Node.js 22 or newer**. The browser suite uses installed Google Chrome, an isolated fixture HTTP server, and headless rendering. It checks the interactive flows, motion controls and responsive layouts and refreshes the eight screenshots under `docs/screenshots/`. On macOS/Linux, use `python` and `npm` equivalents.
+
+Edit `frontend/experience.jsx` and `frontend/experience.css`, then run `npm run build`. Commit the generated `app/static/experience-react.*` files with your source changes. The normal Python server serves them directly; there is no separate frontend server to deploy. See the [frontend guide](frontend/README.md) for component boundaries and the build workflow.
 
 See [VALIDATION.md](VALIDATION.md) for checks actually run and their limits.
 
@@ -311,7 +323,8 @@ Mutation requests require `X-Ripple-Client: 1` and pass same-origin checks. Mode
 | `app/agents/` | Analysis, viewers, insights, strategy, and chat |
 | `app/store.py`, `app/checkpoints.py` | PostgreSQL, migration, checkpoint recovery |
 | `app/static/` | Landing page, workspace, network, and visual design |
+| `frontend/` | React components, theme source, local asset build, and frontend development guide |
 | `skills/` | Runtime instructions for the six agent stages |
 | `tests/` | Backend, DOM, and browser regression checks |
 
-Visual inspiration: [Shift Studio by Elux Space](https://dribbble.com/shots/27104940-Shift-Studio-Digital-Agency-Hero-Animation). Ripple uses its own audience-network identity and implementation.
+Visual direction inspired by [Braz Ai — Website Animation](https://dribbble.com/shots/27789496-Braz-Ai-Website-Animation): a pale editorial canvas, oversized typography, warm rose/apricot color and a central composer. Ripple uses original content-rehearsal copy, its own audience identity and React/Motion implementation. No reference-site assets are bundled.
