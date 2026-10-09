@@ -96,7 +96,7 @@ const server=http.createServer((req,res)=>{
  await page.locator('#replayLive').click();assert((await page.locator('#agentInspector').innerText()).includes('The three-step checklist'));
  await page.locator('summary').filter({hasText:'Your content / full analysis'}).click();await page.locator('#fullAnalysis').click();assert((await page.locator('#workspaceDrawer').innerText()).includes('Sharing scenario'));await page.keyboard.press('Escape');
  await page.locator('#allSuggestions').click();assert((await page.locator('#workspaceDrawer').innerText()).includes('Cover / thumbnail'));await page.keyboard.press('Escape');
- await page.locator('#askNav').click();await page.locator('#chatQuestion').fill('What should I change in the opening?');await page.locator('#chatForm button[type=submit]').click();await page.locator('.chat-message:not(.user)').waitFor();await shot('04-ask-ripple');await page.keyboard.press('Escape');
+ await page.locator('#askNav').click();await page.locator('#chatQuestion').fill('What should I change in the opening?');await page.locator('#chatForm button[type=submit]').click();await page.locator('.chat-message:not(.user)').waitFor();await page.locator('#workspaceDrawer').evaluate(dialog=>{const label=document.createElement('p');label.textContent='DOCUMENTATION EXAMPLE · TEST FIXTURE DATA';label.style.cssText='font:9px monospace;color:var(--muted);margin:0 0 18px';dialog.prepend(label)});await shot('04-ask-ripple');await page.keyboard.press('Escape');
  await page.locator('[data-page=compare]').click();await page.locator('#compareButton').click();await page.locator('#comparison table').waitFor();await shot('05-compare-versions',true);
  await page.locator('#createExperiment').click();await page.locator('[name=hook]').fill('Start with the finished mood board');await page.locator('[name=approved]').check();await page.locator('#experimentForm button[type=submit]').click();await page.locator('#networkCanvas').waitFor();assert.equal(submitted,1);
  assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await shot('07-light-studio',true);await page.locator('#themeToggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await shot('08-dark-studio',true);await page.locator('#themeToggle').click();
@@ -107,7 +107,7 @@ const server=http.createServer((req,res)=>{
    await page.evaluate(view=>navigate(view),view);if(view==='studio')await page.locator('#networkCanvas').waitFor();
    const sizes=await page.evaluate(()=>({full:document.documentElement.scrollWidth,viewport:innerWidth}));
    assert(sizes.full<=sizes.viewport+1,`${view} overflows at ${width}px: ${JSON.stringify(sizes)}`);
-   if(width===390&&view==='home')await shot('06-mobile-landing',true);
+   if(width===390&&view==='home'){await page.setViewportSize({width,height:1100});await shot('06-mobile-landing');await page.setViewportSize({width,height:900})}
   }
  }
  // Exercise the animated path too; all other captures use reduced motion.
