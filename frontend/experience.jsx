@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { ArrowUpRight, Play, Plus, Upload, Link2, Film, UsersRound, Fingerprint, ScanEye, Sparkles, SlidersHorizontal, Check, ChevronRight, CircleHelp, History, GitCompareArrows, Library, Settings2, MessageCircle, CircleDot, Pause } from 'lucide-react';
 import './experience.css';
+import './workspace-color.css';
 
 const roots = new Map();
 let pendingDraft = null;
