@@ -57,3 +57,5 @@ async function renderLibrary(){
  $('#main').innerHTML=heading('','Library','Your saved creative directions and creator-ready reports.')+(saved.length?'<div class="library-grid">'+saved.map(t=>'<section class="card"><h2>'+esc(t.title)+'</h2>'+diagnostic('Alternative hook',t.result?.recommendations?.alternativeHook||'No recommendation saved')+'<div class="actions section-gap"><button class="btn" data-open="'+t.id+'">Open Studio</button><a class="btn" href="/api/tests/'+t.id+'/report">Export report</a></div></section>').join('')+'</div>':'<div class="empty"><h2>Your next creative direction lives here.</h2><p>Complete a simulation to save hooks, captions, recommendations, and downloadable reports.</p><button class="btn primary section-gap" data-library-start>Start a simulation →</button></div>');bindOpen();const start=document.querySelector('[data-library-start]');if(start)start.onclick=()=>navigate('new');
 }
 $('#askNav').onclick=()=>openChat().catch(e=>toast(e.message));
+
+window.RippleExperience?.icons();
