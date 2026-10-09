@@ -18,6 +18,7 @@ function renderStudio(){
 async function pollStudio(id){try{const [t,n]=await Promise.all([api('/tests/'+id),api('/tests/'+id+'/live')]);if(page!=='result'||openedTest!==id)return;current=t;studioData=n;updateStudio();if(['running','queued'].includes(t.status))studioTimer=setTimeout(()=>pollStudio(id),2200)}catch(e){if(page==='result'&&openedTest===id){toast(e.message);studioTimer=setTimeout(()=>pollStudio(id),5000)}}}
 function updateStudio(){
  if(!networkView||!studioData)return;const t=current,n=studioData,r=t.result,ps=n.nodes.filter(x=>x.reaction).map(x=>x.reaction),terminal=!['running','queued'].includes(t.status),o=r?.outcome;
+ if(!n.nodes.some(node=>node.id===selectedAgent)){selectedAgent=null;renderInspectorWelcome(n.nodes);}
  networkView.setData(n);$('#graphEmpty').hidden=n.nodes.length>0;$('#graphEmpty').innerHTML=terminal?'<b>No audience yet</b><p>Resume after resolving any reported error.</p>':'<span class="spinner"></span><b>Getting to know your content</b><p>Your audience appears as profiles are generated.</p>';
  $('#studioStatus').textContent=t.status;$('#studioStage').textContent=t.stage;$('#studioProgress').value=t.progress;$('#retry').hidden=!['failed','partial','interrupted'].includes(t.status);
  $('#studioError').innerHTML=t.error?'<div class="warning error">'+esc(t.error)+'</div>':t.status==='partial'?'<div class="warning">Some work is incomplete. Resume to retry missing responses or recommendations.</div>':'';
@@ -34,6 +35,13 @@ function updateStudio(){
  if(r)$('#provenance').innerHTML+=diagnostic('Content analysis · AI interpretation',r.analysis.summary)+diagnostic('Opening hook · AI interpretation',r.analysis.hook)+(r.metadata?.frames?'<div class="frames">'+r.metadata.frames.map(f=>'<div class="frame"><img src="/api/tests/'+t.id+'/frames/'+encodeURIComponent(f.file)+'" alt="Sampled source frame at '+Number(f.seconds)+' seconds"><small>'+Number(f.seconds)+'s · source frame</small></div>').join('')+'</div>':'');
  $('#activityFeed').innerHTML=n.events.slice(-60).reverse().map(e=>'<div class="activity"><i></i><div><b>'+esc(e.message||e.kind)+'</b><small>'+new Date(e.at).toLocaleTimeString()+'</small></div></div>').join('')||'<p class="sub">Waiting for the first event.</p>';
  if(selectedAgent){const node=n.nodes.find(x=>x.id===selectedAgent);if(node){networkView.selected=selectedAgent;renderInspector(node)}}
+}
+function renderInspectorWelcome(nodes){
+ const host=$('#agentInspector'),choices=nodes.slice(0,3),key=JSON.stringify(choices.map(n=>[n.id,n.profile.personaName,n.cohort]));
+ if(host.dataset.viewerChoices===key&&host.querySelector('.inspector-welcome'))return;
+ host.dataset.viewerChoices=key;
+ host.innerHTML='<div class="inspector-welcome"><small>THE PEOPLE BEHIND THE DOTS</small><div class="perspective-emblem" aria-hidden="true">◎</div><h3>A different person.<br>A different perspective.</h3><p>Pick a viewer to explore what they understood, what held them back, and what might change their mind.</p>'+(choices.length?'<div class="viewer-picks"><small>START WITH A PERSPECTIVE</small>'+choices.map(n=>'<button class="viewer-pick" data-pick-viewer="'+esc(n.id)+'"><b aria-hidden="true">'+esc(n.profile.personaName.replace(/^\d+\s*[·.]?\s*/,'').slice(0,1))+'</b><span>'+esc(n.profile.personaName)+'<small>'+(n.cohort==='target'?'Target audience':'Outside perspective')+'</small></span><i aria-hidden="true">↗</i></button>').join('')+'</div>':'<p class="help">Your audience profiles will appear here as the simulation progresses.</p>')+'<p class="help">Each profile is AI-generated. Reactions appear only when returned by the simulation.</p></div>';
+ host.querySelectorAll('[data-pick-viewer]').forEach(button=>button.onclick=()=>{inspectorTab='thoughts';selectViewer(button.dataset.pickViewer)});
 }
 function renderInspector(node){
  const p=node.profile,r=networkView.visibleReaction(node),seen=new Set(),links=(studioData.links||[]).filter(l=>{if(l.source!==node.id&&l.target!==node.id)return false;const other=l.source===node.id?l.target:l.source;if(seen.has(other))return false;seen.add(other);return true});
