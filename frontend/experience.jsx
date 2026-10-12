@@ -6,6 +6,7 @@ import { ArrowUpRight, Play, Plus, Upload, Link2, Film, UsersRound, Fingerprint,
 import './experience.css';
 import './workspace-color.css';
 import './studio-color.css';
+import './page-color.css';
 
 const roots = new Map();
 let pendingDraft = null;
