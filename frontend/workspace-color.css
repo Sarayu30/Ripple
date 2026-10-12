@@ -114,6 +114,9 @@ html[data-theme] .sidebar {
 .btn:hover { background: var(--panel2); }
 .card, .history-item, .content-ribbon { box-shadow: var(--shadow); }
 input:not([type=checkbox]):not([type=file]), select, textarea { background: var(--input); }
+body:not(.is-landing) input::placeholder,
+body:not(.is-landing) textarea::placeholder { color: var(--muted); opacity: 1; }
+.drawer input::placeholder, .drawer textarea::placeholder { color: var(--muted); opacity: 1; }
 .status, .chip { background: var(--panel2); }
 .number { color: var(--green); background: var(--panel2); border-color: var(--line); }
 .drawer {
@@ -129,6 +132,9 @@ input:not([type=checkbox]):not([type=file]), select, textarea { background: var(
 .drawer .diagnostic b { color: var(--green); }
 :focus-visible { outline-color: var(--green); }
 .sidebar :focus-visible, .page-heading :focus-visible { outline-color: #ffc2aa; }
+.network-panel :focus-visible { outline-color: #ffd1b7; }
+.viewer-identity h2:focus { outline: 2px solid var(--green); outline-offset: 5px; border-radius: 3px; }
+.viewer-pick:focus-visible { outline-width: 3px; }
 
 @media(max-width: 1100px) {
   .page-heading { flex-wrap: wrap; gap: 20px; }
