@@ -10,6 +10,7 @@ The redesign keeps the existing API paths, Groq provider behavior, six agent sta
 | Live creative brief | New simulation companion | Browser checks name, audience and panel-size updates |
 | Audience perspective introduction | Keyboard-accessible audience lens | Browser selection and arrow-key checks; illustration clearly labeled |
 | Original input context | Studio content ribbon above the metrics | Browser expansion and saved-angle assertion |
+| Saved-profile shortcuts | Unselected Studio inspector → Start with a perspective | Browser shortcut count, keyboard activation and focus on the selected viewer |
 | Ambient movement control | Homepage Pause motion; system reduced motion | Separate Chrome contexts exercise both motion preferences and pause |
 | Video upload and source preview | New simulation; local video preview, upload controls | Browser input visibility; Python FFmpeg extraction and HTTP boundaries |
 | Public links, transcript, caption | New simulation → Paste a link | DOM and browser tab/disclosure checks; URL validation tests |
@@ -41,7 +42,7 @@ The redesign keeps the existing API paths, Groq provider behavior, six agent sta
 | Markdown reports / JSON exports | Content details, Library, comparison | Existing API/report and legacy export tests |
 | Confirmed deletion | Your simulations | API tests; PostgreSQL transactional checkpoint cleanup; confirmation retained |
 | Theme toggle | Workspace header; preference retained locally | Browser dark/light toggle |
-| Mobile and tablet layouts | Every main page | 16 browser overflow checks at 390px and 768px |
+| Mobile and tablet layouts | Every main page in both themes | 32 browser overflow checks at 390px and 768px |
 | Empty / loading / error states | Existing pages and drawers; clearer guidance | DOM empty-state; API failure/retry tests |
 | Private media / same-origin boundaries | Existing server routes and middleware | HTTP security tests |
 

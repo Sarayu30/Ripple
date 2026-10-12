@@ -4,7 +4,7 @@
 
 Ripple gives your content a rehearsal audience. Upload a short video or add a public link with its transcript or caption, describe who you want to reach, and explore how different **AI-simulated viewers** might respond. See what connects, why someone might scroll, and which edits are worth testing next.
 
-![Ripple's new content rehearsal: editorial typography, a rose-and-apricot animated stage, and an idea composer](docs/screenshots/01-landing.png)
+![Ripple's content rehearsal: a dark plum introduction, coral actions, and an animated idea composer](docs/screenshots/01-landing.png)
 
 **Start here:** select **Simulate your audience** to open setup, or type an idea and attach a video in the central composer. The composer carries your draft into the setup form, where you choose the audience and review consent before running anything. **Open Studio** returns to saved work.
 
@@ -75,6 +75,8 @@ Each dot is one simulated viewer. Select a dot to see the reaction, the reason b
 
 **Try it:** select a dot, read its objection, then select a different viewer. This helps you understand disagreement instead of relying only on an average score.
 
+Before selecting a dot, the inspector offers **Start with a perspective** shortcuts to actual profiles in your simulation. Use a shortcut with the mouse or **Tab + Enter**; keyboard focus moves to the selected viewer's name. These are saved AI profiles, not placeholder people. The map keeps its dark backdrop in both themes so the reaction colors remain distinct.
+
 - **2D** provides an overview; **3D** lets you rotate the layout by dragging.
 - Filter by target audience, outside audience, sharing, scrolling, negative reactions, or pending responses.
 - Zoom, pan, reset, expand to fullscreen, or use **Tab + Enter** to select viewers.
@@ -136,21 +138,43 @@ Content-only edits reuse the audience profiles while reevaluating responses. Aud
 
 **Your simulations** shows saved runs, dates, audience descriptions, status, and available verdicts. Reopen results, resume interrupted work, or delete a simulation with confirmation. **Library** collects creative directions and downloadable reports.
 
+![Saved simulations with numbered rows, audience context, completion status and actions](docs/screenshots/09-history.png)
+
+**Read a row:** the title identifies your content version, the smaller text gives its date and intended audience, and the status shows whether the run finished. **View test** reopens its Studio. **Delete** asks for confirmation before removing it.
+
+![Library cards showing saved alternative hooks and report download actions](docs/screenshots/10-library.png)
+
+**Use the Library when you want the next idea:** each card surfaces a saved alternative hook. Open its Studio for the reasoning or select **Export report** for a creator-friendly Markdown report.
+
 The interface supports dark and light themes, desktop/tablet/mobile layouts, keyboard navigation, and reduced-motion preferences.
 
 ### 7. Choose a comfortable theme
 
-New browsers start with a warm paper theme. Switch to the charcoal-and-rose theme using the button in the top-right corner; Ripple remembers your preference. Both themes keep the same map, filters, 2D/3D controls, replay, recommendations and evidence sections.
+New browsers start with a lavender workspace, dark plum navigation and coral actions. Switch to the deep plum theme using the button in the top-right corner; Ripple remembers your preference. Both themes keep the same map, filters, 2D/3D controls, replay, recommendations and evidence sections.
 
-![Ripple Studio in the charcoal-and-rose dark theme, with the audience map and recommendations](docs/screenshots/08-dark-studio.png)
+![Ripple Studio in the deep plum theme, with the audience map, real-profile shortcuts and recommendations](docs/screenshots/08-dark-studio.png)
 
-**What changes:** the visual palette. Your selected simulation, saved results and available controls stay the same. The public introduction keeps its rose-and-apricot canvas in either workspace theme.
+**What changes:** the surrounding palette. Your selected simulation, saved results and available controls stay the same. The map and sidebar retain their dark surfaces, while the public introduction keeps its plum hero and rose/apricot composer.
 
 ### 8. Explore Ripple on a smaller screen
 
 <img src="docs/screenshots/06-mobile-landing.png" width="320" alt="Ripple’s responsive mobile introduction">
 
 **On mobile:** the introduction stacks into a single column, with the simulation button followed by the working idea composer. Further down, the audience lens and three-step explanation remain available. The workspace also reorganizes for smaller screens, keeping navigation, form fields, map controls and evidence accessible.
+
+<img src="docs/screenshots/13-mobile-map.png" width="320" alt="Mobile audience map with filters, 2D and 3D modes, replay controls and a reaction legend">
+
+**The map also fits your phone:** filters and mode buttons wrap above the network, with replay and the reaction legend below it. Select a viewer and scroll to the inspector for their reasoning.
+
+### 9. Check setup and understand the assumptions
+
+![Provider setup with configuration status, a model check action and server-side setup instructions](docs/screenshots/12-provider-setup.png)
+
+**Provider setup** explains whether an API key is configured and whether media tools are available. **Check Groq models** requests the provider's model list without running a generation. Keys stay on the server; the example values shown here are documentation placeholders.
+
+![Method and assumptions explaining independent viewers, evidence, sharing scenarios and limitations](docs/screenshots/11-method.png)
+
+**Method & assumptions** explains what the video analysis observes, how simulated viewers are evaluated, and which coefficients drive sharing scenarios. Use it when you need to understand a score's limits before acting on it.
 
 ## Run Ripple locally
 
@@ -300,7 +324,7 @@ npm.cmd run test:ui
 npm.cmd run test:browser
 ```
 
-For UI development, use **Node.js 22 or newer**. The browser suite uses installed Google Chrome, an isolated fixture HTTP server, and headless rendering. It checks the interactive flows, motion controls and responsive layouts and refreshes the eight screenshots under `docs/screenshots/`. On macOS/Linux, use `python` and `npm` equivalents.
+For UI development, use **Node.js 22 or newer**. The browser suite uses installed Google Chrome, an isolated fixture HTTP server, and headless rendering. It checks the interactive flows, motion controls and responsive layouts and refreshes the thirteen screenshots under `docs/screenshots/`. On macOS/Linux, use `python` and `npm` equivalents.
 
 Edit `frontend/experience.jsx` and `frontend/experience.css`, then run `npm run build`. Commit the generated `app/static/experience-react.*` files with your source changes. The normal Python server serves them directly; there is no separate frontend server to deploy. See the [frontend guide](frontend/README.md) for component boundaries and the build workflow.
 

@@ -1,6 +1,15 @@
 # Validation performed
 
-Updated: 2026-10-09. The React UI checks below are current; the PostgreSQL/backend checks record the earlier migration verification.
+Updated: 2026-10-12. The latest UI checks are below; the earlier React and PostgreSQL sections record their respective verification passes.
+
+## Workspace contrast and page review — October 12
+
+- `npm run build`, `npm run test:ui`, and `npm run test:browser` passed.
+- The browser suite now checks all eight main pages at 390px and 768px in both light and dark themes: **32 responsive overflow checks**.
+- New assertions verify the inspector's three saved-profile shortcuts, keyboard activation, focus on the selected viewer name, and the dark network surface in both themes. Existing replay, filters, 2D/3D, pan/zoom/fullscreen, chat, experiments, comparisons and draft handoff checks still pass.
+- Thirteen fixture screenshots were regenerated and visually reviewed, including history, Library, method, provider setup and a mobile map. They are embedded in the README walkthrough.
+- No JavaScript page errors were recorded. Motion-enabled and reduced-motion browser paths both passed. This remains functional and visual verification, not a formal accessibility audit.
+- No backend/database implementation changed; no production record, private media or `.env` value was read or altered for these captures. No paid Groq calls were made. The Python suite was not repeated for this frontend-only change.
 
 ## React redesign verification — October 9
 
