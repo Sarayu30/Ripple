@@ -74,6 +74,10 @@ const server=http.createServer((req,res)=>{
  assert((await page.locator('.local-preview').getAttribute('src')).startsWith('blob:'));
  await page.locator('[data-page=studio]').click();await page.locator('.agent-node').first().waitFor();
  assert.equal(await page.locator('.agent-node').count(),25);
+ assert.equal(await page.locator('.viewer-pick').count(),3);
+ await page.locator('.viewer-pick').nth(1).focus();await page.keyboard.press('Enter');
+ assert.equal(await page.locator('#viewerName').evaluate(el=>el===document.activeElement),true);
+ assert((await page.locator('#viewerName').innerText()).includes('Studio founder'));
  await page.locator('.content-ribbon-toggle').click();await page.locator('.content-ribbon-detail').waitFor({state:'visible'});
  assert((await page.locator('.content-ribbon-detail').innerText()).includes(payload.angle));await page.locator('.content-ribbon-toggle').click();
  // Label documentation examples in the page, without altering production templates.
@@ -100,15 +104,29 @@ const server=http.createServer((req,res)=>{
  await page.locator('[data-page=compare]').click();await page.locator('#compareButton').click();await page.locator('#comparison table').waitFor();await shot('05-compare-versions',true);
  await page.locator('#createExperiment').click();await page.locator('[name=hook]').fill('Start with the finished mood board');await page.locator('[name=approved]').check();await page.locator('#experimentForm button[type=submit]').click();await page.locator('#networkCanvas').waitFor();assert.equal(submitted,1);
  assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await shot('07-light-studio',true);await page.locator('#themeToggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await shot('08-dark-studio',true);await page.locator('#themeToggle').click();
+ for(const [view,name] of [['history','09-history'],['library','10-library'],['method','11-method'],['settings','12-provider-setup']]){
+  await page.evaluate(view=>navigate(view),view);await shot(name,true);
+ }
  await page.evaluate(()=>document.querySelector('#documentationBadge')?.remove());
+ for(const theme of ['light','dark']){
+ await page.evaluate(theme=>applyTheme(theme),theme);
  for(const width of [768,390]){
   await page.setViewportSize({width,height:900});
   for(const view of ['home','new','studio','history','compare','library','method','settings']){
    await page.evaluate(view=>navigate(view),view);if(view==='studio')await page.locator('#networkCanvas').waitFor();
    const sizes=await page.evaluate(()=>({full:document.documentElement.scrollWidth,viewport:innerWidth}));
-   assert(sizes.full<=sizes.viewport+1,`${view} overflows at ${width}px: ${JSON.stringify(sizes)}`);
-   if(width===390&&view==='home'){await page.setViewportSize({width,height:1100});await shot('06-mobile-landing');await page.setViewportSize({width,height:900})}
+   assert(sizes.full<=sizes.viewport+1,`${theme} ${view} overflows at ${width}px: ${JSON.stringify(sizes)}`);
+   if(theme==='light'&&width===390&&view==='home'){await page.setViewportSize({width,height:1100});await shot('06-mobile-landing');await page.setViewportSize({width,height:900})}
+   if(view==='studio'){
+    assert.equal(await page.locator('.network-scene').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(33, 23, 46)');
+    if(theme==='light'&&width===390){
+     await page.locator('.network-head').evaluate(el=>el.insertAdjacentHTML('beforeend','<span id="mobileDoc" class="help">Documentation example · Test fixture data</span>'));
+     await page.locator('#networkPanel').screenshot({path:'docs/screenshots/13-mobile-map.png',animations:'disabled'});
+     await page.locator('#mobileDoc').evaluate(el=>el.remove());
+    }
+   }
   }
+ }
  }
  // Exercise the animated path too; all other captures use reduced motion.
  const motionPage=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'no-preference'});
@@ -117,6 +135,6 @@ const server=http.createServer((req,res)=>{
  await motionPage.waitForFunction(()=>getComputedStyle(document.querySelector('.r-atmosphere i')).animationPlayState==='running');
  await motionPage.locator('.r-motion-toggle').click();assert.equal(await motionPage.locator('.r-atmosphere i').first().evaluate(el=>getComputedStyle(el).animationPlayState),'paused');
  await motionPage.close();
- assert.deepEqual(errors,[]);console.log('PASS: React composer/file handoff, live brief, audience tabs, motion pause, content ribbon; Studio controls/chat/comparison; light/dark themes; 16 responsive page checks. Eight screenshots captured.');
+ assert.deepEqual(errors,[]);console.log('PASS: React inputs and motion; viewer shortcuts and keyboard focus; Studio controls/chat/comparison; colored map in both themes; 32 responsive page checks. Thirteen screenshots captured.');
  }finally{await browser.close();server.close()}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1});
