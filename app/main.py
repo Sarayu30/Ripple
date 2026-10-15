@@ -4,6 +4,7 @@ import os
 import shutil
 import uuid
 import hashlib
+import secrets
 from functools import wraps
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -72,6 +73,8 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts()
 
 @app.middleware('http')
 async def security(request: Request, call_next):
+    if settings.production() and not secrets.compare_digest(request.headers.get('x-ripple-origin-secret', ''), os.getenv('ORIGIN_SECRET', '')):
+        return JSONResponse({'detail': 'Use the published application address.'}, 403, headers={'Cache-Control':'no-store'})
     if auth.managed():
         header = request.headers.get('authorization', '')
         token = header[7:] if header.startswith('Bearer ') else request.cookies.get('ripple_session', '')

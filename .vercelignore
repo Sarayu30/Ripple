@@ -1,0 +1,10 @@
+*
+!package.json
+!package-lock.json
+!vercel.json
+!frontend
+!frontend/**
+!app
+app/*
+!app/static
+!app/static/**

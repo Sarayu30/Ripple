@@ -3,6 +3,8 @@
   "private": true,
   "version": "3.0.0",
   "scripts": {
+    "build:vercel": "npm run build && node frontend/vercel.mjs",
+    "test:deploy": "node --test tests/deployment.test.mjs",
     "build": "node frontend/build.mjs",
     "test:ui": "node tests/frontend.cjs",
     "test:browser": "node tests/browser.cjs"

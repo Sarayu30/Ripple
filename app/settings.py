@@ -44,6 +44,8 @@ def validate():
         raise RuntimeError('Production DATA_DIR must be an absolute persistent mount path.')
     if os.getenv('JOB_MODE') != 'durable':
         raise RuntimeError('Production requires JOB_MODE=durable for queued recovery.')
+    if len(os.getenv('ORIGIN_SECRET', '')) < 32:
+        raise RuntimeError('Production requires a server-only ORIGIN_SECRET of at least 32 characters.')
 
 
 def csp():
