@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import uuid
+from functools import wraps
 from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,6 +16,7 @@ from pydantic import ValidationError
 from . import store
 from . import settings
 from . import auth
+from . import worker
 from .schemas import TestInput, ExperimentInput, ChatInput
 from .media import preview, source_url
 from .providers import Provider, ProviderError
@@ -24,17 +26,44 @@ from .network import network_summary, initial_network
 jobs = {}
 chat_jobs = set()
 semaphore = None
+submission_lock = None
+queue_task = None
 @asynccontextmanager
 async def lifespan(app):
-    global semaphore
+    global semaphore, submission_lock, queue_task
     settings.validate()
-    store.init()
+    await asyncio.to_thread(store.init)
     semaphore = asyncio.Semaphore(max(1,min(10,int(os.getenv('AGENT_CONCURRENCY','1')))))
-    yield
-    tasks = list(jobs.values())
-    for t in tasks: t.cancel()
-    await asyncio.gather(*tasks,return_exceptions=True)
-    store.close()
+    submission_lock = asyncio.Lock()
+    connection = await asyncio.to_thread(worker.acquire)
+    try:
+        if worker.enabled():
+            await asyncio.to_thread(worker.recover)
+            queue_task = asyncio.create_task(worker.run(connection, jobs, start_job))
+        else:
+            with store.db() as c:
+                c.execute("UPDATE tests SET status='interrupted', error='Server restarted. Resume saved work.' WHERE status IN ('queued','running')")
+        yield
+    finally:
+        if queue_task:
+            queue_task.cancel()
+            await asyncio.gather(queue_task, return_exceptions=True)
+            queue_task = None
+        tasks = list(jobs.values())
+        for t in tasks: t.cancel()
+        await asyncio.gather(*tasks,return_exceptions=True)
+        await asyncio.to_thread(connection.close)
+        store.close()
+
+
+def serial_submission(function):
+    @wraps(function)
+    async def wrapped(*args, **kwargs):
+        if submission_lock.locked():
+            raise HTTPException(429, 'Another submission is being saved. Try again shortly.')
+        async with submission_lock:
+            return await function(*args, **kwargs)
+    return wrapped
 
 app = FastAPI(title='Ripple',version='2.0.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts())
@@ -128,7 +157,8 @@ async def health_ready():
             connection.execute('SELECT 1')
         return os.access(store.MEDIA, os.W_OK) and bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
     try:
-        if await asyncio.to_thread(check): return {'status': 'ready'}
+        queue_ready = not worker.enabled() or (queue_task is not None and not queue_task.done())
+        if queue_ready and await asyncio.to_thread(check): return {'status': 'ready'}
     except Exception:
         pass
     return JSONResponse({'status': 'unavailable'}, 503)
@@ -165,12 +195,16 @@ def find(id):
     if row is None: raise HTTPException(404,'Test not found')
     return row
 
-def launch(id):
+def start_job(id):
     task = asyncio.create_task(execute(id,semaphore))
     jobs[id]=task
     task.add_done_callback(lambda _:jobs.pop(id,None))
 
+def launch(id):
+    if not worker.enabled(): start_job(id)
+
 @app.post('/api/tests', status_code=202)
+@serial_submission
 async def create(payload: str = Form(...), video: UploadFile | None = File(None)):
     if len(jobs)>=2: raise HTTPException(429,'Two tests are already running. Wait before starting another.')
     try:
@@ -213,6 +247,7 @@ async def get(id: str):
     return row
 
 @app.post('/api/tests/{id}/retry')
+@serial_submission
 async def retry(id: str):
     row=find(id)
     if id in jobs: raise HTTPException(409,'Test is already running.')
@@ -278,6 +313,7 @@ async def private_video(id: str):
     return FileResponse(path,media_type={'.mp4':'video/mp4','.mov':'video/quicktime','.webm':'video/webm'}.get(path.suffix,'application/octet-stream'))
 
 @app.post('/api/tests/{id}/versions',status_code=202)
+@serial_submission
 async def experiment(id: str, payload: ExperimentInput):
     from .experiments import create_version
     row=find(id)

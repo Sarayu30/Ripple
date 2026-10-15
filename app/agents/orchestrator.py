@@ -92,7 +92,8 @@ async def execute_graph(id,semaphore,provider_factory):
                 input_row={key:row[key] for key in ('id','title','created','payload')}
                 await graph.ainvoke({'row':input_row,'completed':False},config)
     except asyncio.CancelledError:
-        store.update(id,status='interrupted',error='Server stopped. Resume to use the saved workflow checkpoint.')
+        from ..worker import enabled
+        store.update(id,status='queued' if enabled() else 'interrupted',error='Server stopped. Saved workflow will resume.')
         raise
     except (ProviderError,ValueError) as exc:
         store.update(id,status='failed',stage='Needs attention',error=str(exc))

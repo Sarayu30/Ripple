@@ -99,7 +99,6 @@ def init():
         c.execute('CREATE INDEX IF NOT EXISTS tests_owner_created_idx ON tests (owner_id, created DESC)')
         c.execute('CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, applied TIMESTAMPTZ DEFAULT now())')
         import_legacy(c)
-        c.execute("UPDATE tests SET status='interrupted', error='Server restarted. Resume to reuse completed viewer evaluations.' WHERE status IN ('queued','running')")
     from .checkpoints import setup
     setup()
 

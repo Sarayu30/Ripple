@@ -42,6 +42,8 @@ def validate():
         raise RuntimeError('Mount persistent DATA_DIR storage and set PERSISTENT_DATA_CONFIRMED=1.')
     if not os.path.isabs(os.getenv('DATA_DIR', '')):
         raise RuntimeError('Production DATA_DIR must be an absolute persistent mount path.')
+    if os.getenv('JOB_MODE') != 'durable':
+        raise RuntimeError('Production requires JOB_MODE=durable for queued recovery.')
 
 
 def csp():
