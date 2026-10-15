@@ -31,8 +31,9 @@ def validate():
         raise RuntimeError('Production requires PUBLIC_ORIGIN.')
     if not os.getenv('ALLOWED_HOSTS') or any('*' in host for host in allowed_hosts()):
         raise RuntimeError('Production requires explicit ALLOWED_HOSTS without wildcards.')
-    if len(os.getenv('APP_PASSWORD', '')) < 24:
-        raise RuntimeError('Production requires an APP_PASSWORD of at least 24 characters.')
+    from .auth import accounts
+    if not accounts() and len(os.getenv('APP_PASSWORD', '')) < 24:
+        raise RuntimeError('Production requires invited accounts or an APP_PASSWORD of at least 24 characters.')
     if os.getenv('PERSISTENT_DATA_CONFIRMED') != '1':
         raise RuntimeError('Mount persistent DATA_DIR storage and set PERSISTENT_DATA_CONFIRMED=1.')
     if not os.path.isabs(os.getenv('DATA_DIR', '')):

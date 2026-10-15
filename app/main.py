@@ -1,8 +1,6 @@
 import asyncio
-import base64
 import json
 import os
-import secrets
 import shutil
 import uuid
 from contextlib import asynccontextmanager
@@ -16,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
 from . import store
 from . import settings
+from . import auth
 from .schemas import TestInput, ExperimentInput, ChatInput
 from .media import preview, source_url
 from .providers import Provider, ProviderError
@@ -42,14 +41,9 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts()
 
 @app.middleware('http')
 async def security(request: Request, call_next):
-    password = os.getenv('APP_PASSWORD','')
-    if password:
-        try:
-            method, value = request.headers.get('authorization','').split(' ',1)
-            username, supplied = base64.b64decode(value).decode().split(':',1)
-            valid = method.lower()=='basic' and secrets.compare_digest(supplied,password)
-        except Exception: valid = False
-        if not valid: return JSONResponse({'detail':'Local password required.'},401,headers={'WWW-Authenticate':'Basic realm="Ripple"'})
+    user = await asyncio.to_thread(auth.authenticate, request.headers.get('authorization', ''))
+    if user is None:
+        return JSONResponse({'detail':'Workspace credentials required.'},401,headers={'WWW-Authenticate':'Basic realm="Ripple", charset="UTF-8"','Cache-Control':'no-store'})
     if request.method in ('POST','DELETE','PUT','PATCH'):
         origin = request.headers.get('origin')
         expected_origin = settings.public_origin() or str(request.base_url).rstrip('/')
@@ -61,7 +55,11 @@ async def security(request: Request, call_next):
     try: length = int(request.headers.get('content-length','0'))
     except ValueError: return JSONResponse({'detail':'Invalid content length'},400)
     if length>limit: return JSONResponse({'detail':'Upload exceeds configured size limit.'},413)
-    response = await call_next(request)
+    token = auth.identity.set(user)
+    try:
+        response = await call_next(request)
+    finally:
+        auth.identity.reset(token)
     response.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"})
     if settings.production():
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'

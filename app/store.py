@@ -12,6 +12,7 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
+from .auth import owner
 
 ROOT = Path(os.getenv('DATA_DIR', './data')).resolve()
 ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -94,6 +95,8 @@ def init():
         c.execute('CREATE TABLE IF NOT EXISTS tests (id TEXT PRIMARY KEY, created TEXT, title TEXT, '
                   'status TEXT, stage TEXT, progress INTEGER, payload TEXT, result TEXT, error TEXT)')
         c.execute('CREATE INDEX IF NOT EXISTS tests_created_idx ON tests (created DESC)')
+        c.execute("ALTER TABLE tests ADD COLUMN IF NOT EXISTS owner_id TEXT NOT NULL DEFAULT 'local'")
+        c.execute('CREATE INDEX IF NOT EXISTS tests_owner_created_idx ON tests (owner_id, created DESC)')
         c.execute('CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, applied TIMESTAMPTZ DEFAULT now())')
         import_legacy(c)
         c.execute("UPDATE tests SET status='interrupted', error='Server restarted. Resume to reuse completed viewer evaluations.' WHERE status IN ('queued','running')")
@@ -102,8 +105,8 @@ def init():
 
 def create(id, payload):
     with db() as c:
-        c.execute('INSERT INTO tests VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-                  (id, datetime.now(timezone.utc).isoformat(), payload['title'], 'queued', 'Queued', 0, json.dumps(payload), None, None))
+        c.execute('INSERT INTO tests (id,created,title,status,stage,progress,payload,result,error,owner_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                  (id, datetime.now(timezone.utc).isoformat(), payload['title'], 'queued', 'Queued', 0, json.dumps(payload), None, None, owner()))
 
 def update(id, **fields):
     allowed = {'status', 'stage', 'progress', 'result', 'error'}
@@ -112,11 +115,11 @@ def update(id, **fields):
     if 'result' in fields:
         fields['result'] = json.dumps(fields['result'])
     with db() as c:
-        c.execute('UPDATE tests SET ' + ','.join(f'{k}=%s' for k in fields) + ' WHERE id=%s', [*fields.values(), id])
+        c.execute('UPDATE tests SET ' + ','.join(f'{k}=%s' for k in fields) + ' WHERE id=%s AND owner_id=%s', [*fields.values(), id, owner()])
 
 def get(id):
     with db() as c:
-        row = c.execute('SELECT * FROM tests WHERE id=%s', (id,)).fetchone()
+        row = c.execute('SELECT * FROM tests WHERE id=%s AND owner_id=%s', (id,owner())).fetchone()
     if row:
         for key in ('payload', 'result'):
             row[key] = json.loads(row[key]) if row[key] else None
@@ -127,10 +130,12 @@ def listing():
         return c.execute("SELECT id,created,title,status,stage,progress,error, "
                          "payload::jsonb->>'audience' AS audience, "
                          "result::jsonb->'outcome'->>'verdict' AS verdict "
-                         "FROM tests ORDER BY created DESC").fetchall()
+                         "FROM tests WHERE owner_id=%s ORDER BY created DESC", (owner(),)).fetchall()
 
 def delete(id):
     with db() as c:
+        if not c.execute('SELECT id FROM tests WHERE id=%s AND owner_id=%s FOR UPDATE', (id, owner())).fetchone():
+            return
         for table in ('checkpoint_writes', 'checkpoint_blobs', 'checkpoints'):
             c.execute(sql.SQL('DELETE FROM {} WHERE thread_id IN (%s,%s)').format(sql.Identifier(table)), (id, 'chat:' + id))
         c.execute('DELETE FROM tests WHERE id=%s', (id,))
