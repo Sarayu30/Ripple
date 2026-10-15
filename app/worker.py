@@ -47,7 +47,10 @@ async def run(connection, jobs, start):
             for row in await asyncio.to_thread(pending, capacity):
                 if row['id'] in jobs: continue
                 context = auth.identity.set(row['owner_id'])
-                try: start(row['id'])
+                try:
+                    # Cancellation can occur while the pending query is in flight.
+                    current = store.get(row['id'])
+                    if current and current['status'] == 'queued': start(row['id'])
                 finally: auth.identity.reset(context)
             await asyncio.sleep(2)
     except asyncio.CancelledError:

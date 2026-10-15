@@ -57,6 +57,10 @@ async def run(*args):
         proc.kill()
         await proc.communicate()
         raise ValueError('Media processing exceeded 90 seconds.')
+    except asyncio.CancelledError:
+        if proc.returncode is None: proc.kill()
+        await proc.communicate()
+        raise
     if proc.returncode:
         raise ValueError('Video could not be decoded. Upload a valid MP4, MOV or WebM.')
     return out.decode(errors='replace')

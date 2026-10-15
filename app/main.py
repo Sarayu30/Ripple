@@ -262,7 +262,7 @@ async def retry(id: str):
     row=find(id)
     if id in jobs: raise HTTPException(409,'Test is already running.')
     if len(jobs)>=2: raise HTTPException(429,'Two tests are already running.')
-    if row['status'] not in ('failed','partial','interrupted'): raise HTTPException(409,'Only failed, interrupted or partial tests can be retried.')
+    if row['status'] not in ('failed','partial','interrupted','cancelled'): raise HTTPException(409,'Only failed, interrupted, cancelled or partial tests can be retried.')
     try: Provider('groq')
     except ProviderError as exc: raise HTTPException(422,str(exc))
     await asyncio.to_thread(budgets.charge, 'viewers', row['payload'].get('size',25))
@@ -270,12 +270,31 @@ async def retry(id: str):
     launch(id)
     return {'id':id}
 
+@app.post('/api/tests/{id}/cancel')
+async def cancel(id: str):
+    row=find(id)
+    if row['status'] not in ('queued','running'):
+        raise HTTPException(409, 'This simulation is not running.')
+    store.update(id,status='cancelled',stage='Cancelled',error='Cancelled by you. Completed stages are retained for a later resume.')
+    task = jobs.get(id)
+    if task:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+    return {'id':id, 'status':'cancelled'}
+
 @app.delete('/api/tests/{id}')
 async def delete(id: str):
-    find(id)
-    if id in jobs or id in chat_jobs: raise HTTPException(409,'Wait for the running request to finish before deleting.')
-    store.delete(id)
-    shutil.rmtree(store.MEDIA/id,ignore_errors=True)
+    row=find(id)
+    if id in jobs or id in chat_jobs or row['status'] in ('queued','running'):
+        raise HTTPException(409,'Cancel the simulation and wait for active requests before deleting.')
+    # Keep a retryable database record until private files are actually removed.
+    store.update(id,status='deleting',stage='Deleting private files')
+    try:
+        directory=store.MEDIA/id
+        if directory.exists(): await asyncio.to_thread(shutil.rmtree, directory)
+        await asyncio.to_thread(store.delete, id)
+    except Exception:
+        raise HTTPException(503, 'Deletion is incomplete. Retry to finish removing the remaining data.') from None
     return {'deleted':True}
 
 @app.get('/api/tests/{id}/frames/{name}')
