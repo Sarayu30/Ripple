@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
 from . import store
+from . import settings
 from .schemas import TestInput, ExperimentInput, ChatInput
 from .media import preview, source_url
 from .providers import Provider, ProviderError
@@ -27,6 +28,7 @@ semaphore = None
 @asynccontextmanager
 async def lifespan(app):
     global semaphore
+    settings.validate()
     store.init()
     semaphore = asyncio.Semaphore(max(1,min(10,int(os.getenv('AGENT_CONCURRENCY','1')))))
     yield
@@ -35,8 +37,8 @@ async def lifespan(app):
     await asyncio.gather(*tasks,return_exceptions=True)
     store.close()
 
-app = FastAPI(title='Ripple',version='2.0.0',lifespan=lifespan,docs_url=None,redoc_url=None)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','[::1]','testserver'])
+app = FastAPI(title='Ripple',version='2.0.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts())
 
 @app.middleware('http')
 async def security(request: Request, call_next):
@@ -50,7 +52,8 @@ async def security(request: Request, call_next):
         if not valid: return JSONResponse({'detail':'Local password required.'},401,headers={'WWW-Authenticate':'Basic realm="Ripple"'})
     if request.method in ('POST','DELETE','PUT','PATCH'):
         origin = request.headers.get('origin')
-        if (origin and origin != str(request.base_url).rstrip('/')) or request.headers.get('sec-fetch-site')=='cross-site':
+        expected_origin = settings.public_origin() or str(request.base_url).rstrip('/')
+        if (origin and origin != expected_origin) or request.headers.get('sec-fetch-site')=='cross-site':
             return JSONResponse({'detail':'Cross-origin requests are not allowed.'},403)
         if request.headers.get('x-ripple-client')!='1':
             return JSONResponse({'detail':'Missing same-origin request marker.'},403)
@@ -60,6 +63,10 @@ async def security(request: Request, call_next):
     if length>limit: return JSONResponse({'detail':'Upload exceeds configured size limit.'},413)
     response = await call_next(request)
     response.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"})
+    if settings.production():
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+    if request.url.path.startswith('/static/') and response.status_code == 200:
+        response.headers['Cache-Control'] = 'private, max-age=0, must-revalidate'
     return response
 
 class BodyLimit:
@@ -83,6 +90,21 @@ BASE = Path(__file__).parent
 app.mount('/static',StaticFiles(directory=BASE/'static'),name='static')
 @app.get('/')
 async def index(): return FileResponse(BASE/'static'/'index.html')
+
+@app.get('/api/health/live')
+async def health_live(): return {'status': 'ok'}
+
+@app.get('/api/health/ready')
+async def health_ready():
+    def check():
+        with store.db() as connection:
+            connection.execute('SELECT 1')
+        return os.access(store.MEDIA, os.W_OK) and bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
+    try:
+        if await asyncio.to_thread(check): return {'status': 'ready'}
+    except Exception:
+        pass
+    return JSONResponse({'status': 'unavailable'}, 503)
 
 @app.get('/api/config')
 async def config():
