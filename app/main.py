@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import uuid
+import hashlib
 from functools import wraps
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,6 +18,7 @@ from . import store
 from . import settings
 from . import auth
 from . import worker
+from . import budgets
 from .schemas import TestInput, ExperimentInput, ChatInput
 from .media import preview, source_url
 from .providers import Provider, ProviderError
@@ -205,7 +207,7 @@ def launch(id):
 
 @app.post('/api/tests', status_code=202)
 @serial_submission
-async def create(payload: str = Form(...), video: UploadFile | None = File(None)):
+async def create(request: Request, payload: str = Form(...), video: UploadFile | None = File(None)):
     if len(jobs)>=2: raise HTTPException(429,'Two tests are already running. Wait before starting another.')
     try:
         data = TestInput.model_validate_json(payload)
@@ -220,6 +222,7 @@ async def create(payload: str = Form(...), video: UploadFile | None = File(None)
     id = str(uuid.uuid4())
     directory=store.MEDIA/id
     directory.mkdir(mode=0o700)
+    media_digest = hashlib.sha256()
     try:
         if data.sourceType=='upload':
             suffix=Path(video.filename or '').suffix.lower()
@@ -229,9 +232,13 @@ async def create(payload: str = Form(...), video: UploadFile | None = File(None)
                 while chunk := await video.read(1024*1024):
                     size+=len(chunk)
                     if size>int(os.getenv('MAX_UPLOAD_MB','100'))*1024*1024: raise HTTPException(413,'Video is too large.')
+                    media_digest.update(chunk)
                     f.write(chunk)
             if not size: raise HTTPException(422,'Video is empty.')
-        store.create(id,data.model_dump())
+        admitted = await asyncio.to_thread(budgets.admit, id, data.model_dump(), request.headers.get('idempotency-key'), media_digest.hexdigest())
+        if admitted != id:
+            shutil.rmtree(directory)
+            return {'id': admitted}
         launch(id)
         return {'id':id}
     except Exception:
@@ -255,6 +262,7 @@ async def retry(id: str):
     if row['status'] not in ('failed','partial','interrupted'): raise HTTPException(409,'Only failed, interrupted or partial tests can be retried.')
     try: Provider('groq')
     except ProviderError as exc: raise HTTPException(422,str(exc))
+    await asyncio.to_thread(budgets.charge, 'viewers', row['payload'].get('size',25))
     store.update(id,status='queued',error=None)
     launch(id)
     return {'id':id}
@@ -357,7 +365,10 @@ async def ask(id: str,payload: ChatInput):
     if id in chat_jobs: raise HTTPException(409,'A reply is already being prepared for this simulation.')
     if len(chat_jobs)>=2: raise HTTPException(429,'Two replies are already running. Try again shortly.')
     chat_jobs.add(id)
-    try: return await answer(row,payload.message,Provider('groq'),semaphore)
+    try:
+        provider = Provider('groq')
+        await asyncio.to_thread(budgets.charge, 'chat', 1)
+        return await answer(row,payload.message,provider,semaphore)
     except ProviderError as exc: raise HTTPException(502,str(exc))
     finally: chat_jobs.discard(id)
 

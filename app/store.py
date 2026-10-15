@@ -99,13 +99,19 @@ def init():
         c.execute('CREATE INDEX IF NOT EXISTS tests_owner_created_idx ON tests (owner_id, created DESC)')
         c.execute('CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, applied TIMESTAMPTZ DEFAULT now())')
         import_legacy(c)
+        from .budgets import setup as setup_budgets
+        setup_budgets(c)
     from .checkpoints import setup
     setup()
 
 def create(id, payload):
     with db() as c:
-        c.execute('INSERT INTO tests (id,created,title,status,stage,progress,payload,result,error,owner_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-                  (id, datetime.now(timezone.utc).isoformat(), payload['title'], 'queued', 'Queued', 0, json.dumps(payload), None, None, owner()))
+        insert(c, id, payload)
+
+
+def insert(connection, id, payload):
+    connection.execute('INSERT INTO tests (id,created,title,status,stage,progress,payload,result,error,owner_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                       (id, datetime.now(timezone.utc).isoformat(), payload['title'], 'queued', 'Queued', 0, json.dumps(payload), None, None, owner()))
 
 def update(id, **fields):
     allowed = {'status', 'stage', 'progress', 'result', 'error'}
