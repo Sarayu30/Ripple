@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
@@ -41,9 +41,17 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts()
 
 @app.middleware('http')
 async def security(request: Request, call_next):
-    user = await asyncio.to_thread(auth.authenticate, request.headers.get('authorization', ''))
+    if auth.managed():
+        header = request.headers.get('authorization', '')
+        token = header[7:] if header.startswith('Bearer ') else request.cookies.get('ripple_session', '')
+        public = request.url.path in ('/', '/auth-config.js', '/api/auth/logout') or request.url.path.startswith('/static/')
+        user = 'public' if public else await asyncio.to_thread(auth.verify_session, token)
+    else:
+        user = await asyncio.to_thread(auth.authenticate, request.headers.get('authorization', ''))
     if user is None:
-        return JSONResponse({'detail':'Workspace credentials required.'},401,headers={'WWW-Authenticate':'Basic realm="Ripple", charset="UTF-8"','Cache-Control':'no-store'})
+        headers = {'Cache-Control': 'no-store'}
+        if not auth.managed(): headers['WWW-Authenticate'] = 'Basic realm="Ripple", charset="UTF-8"'
+        return JSONResponse({'detail':'Sign in to access your workspace.'},401,headers=headers)
     if request.method in ('POST','DELETE','PUT','PATCH'):
         origin = request.headers.get('origin')
         expected_origin = settings.public_origin() or str(request.base_url).rstrip('/')
@@ -55,12 +63,17 @@ async def security(request: Request, call_next):
     try: length = int(request.headers.get('content-length','0'))
     except ValueError: return JSONResponse({'detail':'Invalid content length'},400)
     if length>limit: return JSONResponse({'detail':'Upload exceeds configured size limit.'},413)
-    token = auth.identity.set(user)
+    context_token = auth.identity.set(user)
     try:
         response = await call_next(request)
     finally:
-        auth.identity.reset(token)
-    response.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"})
+        auth.identity.reset(context_token)
+    response.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy': settings.csp()})
+    if auth.managed() and header.startswith('Bearer ') and user != 'public':
+        import jwt, time
+        expires = jwt.decode(token, options={'verify_signature': False}).get('exp', 0)
+        response.set_cookie('ripple_session', token, max_age=max(0, int(expires - time.time())),
+                            httponly=True, secure=settings.production(), samesite='strict', path='/api')
     if settings.production():
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     if request.url.path.startswith('/static/') and response.status_code == 200:
@@ -87,7 +100,23 @@ app.add_middleware(BodyLimit)
 BASE = Path(__file__).parent
 app.mount('/static',StaticFiles(directory=BASE/'static'),name='static')
 @app.get('/')
-async def index(): return FileResponse(BASE/'static'/'index.html')
+async def index():
+    html = (BASE/'static'/'index.html').read_text(encoding='utf-8')
+    return HTMLResponse(html.replace('/static/auth-config.js', '/auth-config.js'))
+
+@app.get('/auth-config.js')
+async def auth_config():
+    config = auth.public_config() if auth.managed() else {'mode': 'local'}
+    return Response('window.RipplePublicAuth = ' + json.dumps(config) + ';', media_type='application/javascript')
+
+@app.post('/api/auth/session')
+async def establish_session(): return {'authenticated': True}
+
+@app.post('/api/auth/logout')
+async def logout():
+    response = JSONResponse({'signedOut': True})
+    response.delete_cookie('ripple_session', path='/api', secure=settings.production(), httponly=True, samesite='strict')
+    return response
 
 @app.get('/api/health/live')
 async def health_live(): return {'status': 'ok'}

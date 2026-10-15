@@ -8,6 +8,7 @@
     "test:browser": "node tests/browser.cjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.117.3",
     "lucide-react": "1.54.0",
     "motion": "14.0.0",
     "react": "19.3.0",

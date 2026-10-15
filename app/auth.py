@@ -9,6 +9,7 @@ import json
 import os
 import re
 import secrets
+from functools import lru_cache
 from contextvars import ContextVar
 from collections import OrderedDict
 from time import monotonic
@@ -19,6 +20,45 @@ _verified = OrderedDict()
 
 def owner():
     return identity.get() or os.getenv('DEFAULT_WORKSPACE_OWNER', 'local')
+
+
+def managed():
+    return os.getenv('AUTH_MODE', 'local') == 'supabase'
+
+
+def public_config():
+    url = os.getenv('SUPABASE_URL', '').rstrip('/')
+    key = os.getenv('SUPABASE_PUBLISHABLE_KEY', '')
+    if not re.fullmatch(r'https://[a-z0-9-]+\.supabase\.co', url):
+        raise RuntimeError('SUPABASE_URL must be your HTTPS Supabase project origin.')
+    if not re.fullmatch(r'sb_publishable_[A-Za-z0-9_-]{16,}', key):
+        raise RuntimeError('Use a Supabase publishable key, never a secret or service-role key.')
+    return {'mode': 'supabase', 'url': url, 'publishableKey': key}
+
+
+@lru_cache(maxsize=2)
+def jwks_client(issuer):
+    import jwt
+    return jwt.PyJWKClient(issuer + '/.well-known/jwks.json', cache_jwk_set=True, lifespan=300, timeout=5)
+
+
+def verify_session(token):
+    import jwt
+    import uuid
+    if not token or len(token) > 8192: return None
+    issuer = public_config()['url'] + '/auth/v1'
+    try:
+        header = jwt.get_unverified_header(token)
+        if header.get('alg') not in ('RS256', 'ES256'): return None
+        key = os.getenv('SUPABASE_JWT_PUBLIC_KEY') or jwks_client(issuer).get_signing_key_from_jwt(token).key
+        claims = jwt.decode(token, key, algorithms=['RS256', 'ES256'], issuer=issuer, audience='authenticated',
+                            options={'require': ['exp', 'iat', 'iss', 'sub', 'session_id']}, leeway=5)
+        if claims.get('role') != 'authenticated' or claims.get('is_anonymous', False): return None
+        subject = str(uuid.UUID(claims['sub']))
+        uuid.UUID(claims['session_id'])
+        return subject
+    except (jwt.PyJWTError, ValueError, TypeError, AttributeError):
+        return None
 
 
 def accounts():
