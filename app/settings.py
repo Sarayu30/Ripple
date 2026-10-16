@@ -32,8 +32,8 @@ def validate():
     if not os.getenv('ALLOWED_HOSTS') or any('*' in host for host in allowed_hosts()):
         raise RuntimeError('Production requires explicit ALLOWED_HOSTS without wildcards.')
     from .auth import accounts, managed, public_config
-    if os.getenv('AUTH_MODE', 'local') not in ('local', 'supabase'):
-        raise RuntimeError('AUTH_MODE must be local or supabase.')
+    if os.getenv('AUTH_MODE', 'local') not in ('local', 'neon'):
+        raise RuntimeError('AUTH_MODE must be local or neon.')
     if managed():
         public_config()
     elif not accounts() and len(os.getenv('APP_PASSWORD', '')) < 24:

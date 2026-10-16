@@ -1,8 +1,8 @@
 import uuid
 import time
 import jwt
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from unittest.mock import Mock
 from fastapi.testclient import TestClient
 from app import auth, store
 from app.main import app
@@ -26,18 +26,17 @@ def test_all_storage_access_scoped_to_owner():
         auth.identity.reset(token)
 
 
-def test_supabase_api_isolation_cookie_and_logout(monkeypatch):
-    key = ec.generate_private_key(ec.SECP256R1())
-    public = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
-    monkeypatch.setenv('AUTH_MODE', 'supabase')
-    monkeypatch.setenv('SUPABASE_URL', 'https://fixture.supabase.co')
-    monkeypatch.setenv('SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_' + 'x' * 32)
-    monkeypatch.setenv('SUPABASE_JWT_PUBLIC_KEY', public)
+def test_neon_api_isolation_cookie_and_logout(monkeypatch):
+    key = ed25519.Ed25519PrivateKey.generate()
+    monkeypatch.setenv('AUTH_MODE', 'neon')
+    monkeypatch.setenv('NEON_AUTH_BASE_URL', 'https://fixture.neon.tech/auth/auth')
+    monkeypatch.setattr(auth, 'jwks_client', Mock(return_value=Mock(
+        get_signing_key_from_jwt=Mock(return_value=Mock(key=key.public_key())))))
     alice, bob, identifier = (str(uuid.uuid4()) for _ in range(3))
     def bearer(user):
-        token = jwt.encode(dict(iss='https://fixture.supabase.co/auth/v1', sub=user,
-            session_id=str(uuid.uuid4()), exp=int(time.time())+60, iat=int(time.time()),
-            aud='authenticated', role='authenticated'), key, algorithm='ES256')
+        token = jwt.encode(dict(iss='https://fixture.neon.tech', sub=user,
+            exp=int(time.time())+60, iat=int(time.time()), emailVerified=True, banned=False,
+            aud='https://fixture.neon.tech', role='authenticated'), key, algorithm='EdDSA')
         return {'Authorization': 'Bearer ' + token, 'X-Ripple-Client': '1'}
     context = auth.identity.set(alice)
     try:

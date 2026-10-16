@@ -4,9 +4,10 @@ import {mkdtemp, readFile, readdir} from 'node:fs/promises';
 import path from 'node:path';
 import {buildWeb, configuration} from '../frontend/vercel.mjs';
 
-const env = {RIPPLE_BACKEND_ORIGIN: 'https://backend.example.com', SUPABASE_URL: 'https://fixture.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_' + 'x'.repeat(32), ORIGIN_SECRET: 'private-origin-value-'.repeat(3), GROQ_API_KEY: 'private-groq-canary', DATABASE_URL: 'private-database-canary'};
+const env = {RIPPLE_BACKEND_ORIGIN: 'https://backend.example.com', NEON_AUTH_BASE_URL: 'https://fixture.neon.tech/auth/auth', ORIGIN_SECRET: 'private-origin-value-'.repeat(3), GROQ_API_KEY: 'private-groq-canary', DATABASE_URL: 'private-database-canary'};
 test('reject secret keys and credential-bearing backend URLs', () => {
-  assert.throws(() => configuration({...env, SUPABASE_PUBLISHABLE_KEY:'sb_secret_hidden'}));
+  assert.throws(() => configuration({...env, NEON_AUTH_BASE_URL:'postgresql://user:password@host/auth'}));
+  assert.throws(() => configuration({...env, NEON_AUTH_BASE_URL:'https://user:password@fixture.neon.tech/auth/auth'}));
   assert.throws(() => configuration({...env, RIPPLE_BACKEND_ORIGIN:'https://user:password@backend.example.com'}));
   assert.throws(() => configuration({...env, ORIGIN_SECRET:''}));
 });

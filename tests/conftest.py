@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 import pytest
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
+# Tests must not inherit a developer's live auth or production routing settings.
+os.environ['AUTH_MODE'] = 'local'
+os.environ['APP_ENV'] = 'development'
+os.environ.pop('APP_PASSWORD', None)
+os.environ.pop('RIPPLE_ACCOUNTS_JSON', None)
+os.environ.pop('PUBLIC_ORIGIN', None)
+os.environ.pop('VERCEL', None)
 _test_schema = 'ripple_test_' + uuid.uuid4().hex
 os.environ['DATABASE_SCHEMA'] = _test_schema
 # Set this before collection imports app.store, even when running one test file.

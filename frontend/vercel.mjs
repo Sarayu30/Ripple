@@ -11,10 +11,10 @@ export function configuration(env) {
   if (backend.protocol !== 'https:' || backend.username || backend.password || backend.pathname !== '/' || backend.search || backend.hash || backend.port) {
     throw Error('Backend origin must be HTTPS, without credentials, paths or custom ports.');
   }
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(env.SUPABASE_URL || '')) throw Error('Set the public Supabase project URL.');
-  if (!/^sb_publishable_[A-Za-z0-9_-]{16,}$/.test(env.SUPABASE_PUBLISHABLE_KEY || '')) throw Error('Only a Supabase publishable key is allowed in the browser build.');
+  const authUrl = (env.NEON_AUTH_BASE_URL || '').replace(/\/$/, '');
+  if (!/^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.neon\.(tech|build)\/[A-Za-z0-9_-]+\/auth$/.test(authUrl)) throw Error('Set the public Neon Auth Base URL, not a database connection string.');
   if (!env.ORIGIN_SECRET || env.ORIGIN_SECRET.length < 32) throw Error('Set a server-only ORIGIN_SECRET of at least 32 characters in Vercel and the backend.');
-  return {backend: backend.origin, auth: {mode: 'supabase', url: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY}};
+  return {backend: backend.origin, auth: {mode: 'neon', url: authUrl}};
 }
 
 export async function buildWeb(env = process.env, output = '.vercel/output') {

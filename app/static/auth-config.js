@@ -1,3 +1,3 @@
 // Public local-development default. The deployment build writes only an explicit
-// allowlist of public Supabase configuration here; no server environment is bundled.
+// allowlist containing the public Neon Auth URL; no server environment is bundled.
 window.RipplePublicAuth = {mode: 'local'};
