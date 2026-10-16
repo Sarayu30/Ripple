@@ -43,10 +43,11 @@ def test_schema_rejects_sql(monkeypatch):
 def test_history_shows_actual_audience_and_verdict():
     id = str(uuid.uuid4())
     store.create(id, {'title': 'History summary', 'audience': 'Existing audience'})
-    store.update(id, result={'outcome': {'verdict': 'Actual stored verdict'}})
+    store.update(id, result={'outcome': {'verdict': 'Actual stored verdict'}, 'recommendations': {'alternativeHook':'Stored hook'}})
     summary = next(row for row in store.listing() if row['id'] == id)
     assert summary['audience'] == 'Existing audience'
     assert summary['verdict'] == 'Actual stored verdict'
+    assert summary['alternativeHook'] == 'Stored hook'
     assert 'payload' not in summary and 'result' not in summary
     store.delete(id)
 

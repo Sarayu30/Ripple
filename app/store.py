@@ -130,12 +130,15 @@ def get(id):
             row[key] = json.loads(row[key]) if row[key] else None
     return row
 
-def listing():
+def listing(limit=100, offset=0):
+    if not 1 <= limit <= 100 or offset < 0:
+        raise ValueError('Invalid history page')
     with db() as c:
         return c.execute("SELECT id,created,title,status,stage,progress,error, "
                          "payload::jsonb->>'audience' AS audience, "
-                         "result::jsonb->'outcome'->>'verdict' AS verdict "
-                         "FROM tests WHERE owner_id=%s ORDER BY created DESC", (owner(),)).fetchall()
+                         "result::jsonb->'outcome'->>'verdict' AS verdict, "
+                         "result::jsonb->'recommendations'->>'alternativeHook' AS \"alternativeHook\" "
+                         "FROM tests WHERE owner_id=%s ORDER BY created DESC,id DESC LIMIT %s OFFSET %s", (owner(),limit,offset)).fetchall()
 
 def delete(id):
     with db() as c:

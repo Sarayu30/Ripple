@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, JSONResponse, Response, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -193,7 +193,8 @@ async def source(request: Request):
     except ValueError as exc: raise HTTPException(422,str(exc))
 
 @app.get('/api/tests')
-async def tests(): return store.listing()
+def tests(limit: int = Query(100, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return store.listing(limit, offset)
 
 def find(id):
     row = store.get(id)
@@ -251,7 +252,7 @@ async def create(request: Request, payload: str = Form(...), video: UploadFile |
         if video: await video.close()
 
 @app.get('/api/tests/{id}')
-async def get(id: str):
+def get(id: str):
     row=find(id)
     row['version']=cached(store.MEDIA/id,'experiment.json')
     return row
@@ -298,7 +299,7 @@ async def delete(id: str):
     return {'deleted':True}
 
 @app.get('/api/tests/{id}/frames/{name}')
-async def frame(id: str,name: str):
+def frame(id: str,name: str):
     find(id)
     import re
     if not re.fullmatch(r'frame-\d+\.jpg',name): raise HTTPException(404)
@@ -308,7 +309,7 @@ async def frame(id: str,name: str):
 
 @app.get('/api/tests/{id}/export')
 async def export(id: str):
-    row=find(id)
+    row=await asyncio.to_thread(find, id)
     row['version']=cached(store.MEDIA/id,'experiment.json')
     row['liveNetwork']=await live_test(id)
     return JSONResponse(row,headers={'Content-Disposition':f'attachment; filename="ripple-{id}.json"'})
@@ -316,7 +317,7 @@ async def export(id: str):
 
 @app.get('/api/tests/{id}/live')
 async def live_test(id: str):
-    row=find(id)
+    row=await asyncio.to_thread(find, id)
     directory=store.MEDIA/id
     live=cached(directory,'live.json')
     if live is None:
@@ -334,7 +335,7 @@ async def live_test(id: str):
     return live
 
 @app.get('/api/tests/{id}/video')
-async def private_video(id: str):
+def private_video(id: str):
     row=find(id)
     if row['payload']['sourceType']!='upload': raise HTTPException(404,'No uploaded video')
     paths=list((store.MEDIA/id).glob('source.*'))
@@ -351,31 +352,36 @@ async def experiment(id: str, payload: ExperimentInput):
     if id in jobs or len(jobs)>=2: raise HTTPException(429,'Wait for running simulations to finish.')
     try:
         Provider('groq')
-        child=create_version(row,payload)
+        child=await asyncio.to_thread(create_version,row,payload)
     except (ValueError,ProviderError) as exc: raise HTTPException(422,str(exc))
     launch(child)
     return {'id':child}
 
 @app.get('/api/tests/{id}/compare/{other}')
-async def comparison(id: str, other: str):
+def comparison(id: str, other: str):
     from .experiments import compare
     try: return compare(find(id),find(other))
     except ValueError as exc: raise HTTPException(409,str(exc))
 
 @app.get('/api/tests/{id}/versions')
-async def version_history(id: str):
+def version_history(id: str):
     row=find(id)
     version=cached(store.MEDIA/id,'experiment.json') or {}
     root=version.get('rootId',id)
     versions=[]
-    for candidate in store.listing():
-        metadata=cached(store.MEDIA/candidate['id'],'experiment.json') or {}
-        if candidate['id']==root or metadata.get('rootId')==root:
-            versions.append(dict(candidate,parentId=metadata.get('parentId')))
+    offset=0
+    while True:
+        candidates=store.listing(offset=offset)
+        for candidate in candidates:
+            metadata=cached(store.MEDIA/candidate['id'],'experiment.json') or {}
+            if candidate['id']==root or metadata.get('rootId')==root:
+                versions.append(dict(candidate,parentId=metadata.get('parentId')))
+        if len(candidates)<100: break
+        offset+=100
     return versions
 
 @app.get('/api/tests/{id}/chat')
-async def conversation(id: str):
+def conversation(id: str):
     find(id)
     return cached(store.MEDIA/id,'chat.json') or []
 
@@ -395,7 +401,7 @@ async def ask(id: str,payload: ChatInput):
     finally: chat_jobs.discard(id)
 
 @app.get('/api/tests/{id}/report')
-async def report(id: str):
+def report(id: str):
     from .reports import creator_report
     row=find(id)
     if not row.get('result'): raise HTTPException(409,'A report needs saved simulation results.')
