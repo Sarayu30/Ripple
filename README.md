@@ -38,6 +38,14 @@ Follow the screens below from your first upload to your next creative decision. 
 
 Screenshots containing results use **clearly labeled documentation fixtures**, not real predictions or private user content. Fixtures exist only in the browser test harness; the application has no fabricated-results mode.
 
+### Your account, your rehearsal space
+
+Hosted Ripple uses **Neon Auth** for signup, login, email verification and password recovery. Create an account, verify the code or link sent to your email, then sign in. **Forgot password?** sends a recovery link; **Send verification code** helps you finish an unverified signup. Each account can access only its own simulations, media, conversations and exports.
+
+![Ripple account screen with email login, signup, recovery and verification controls](docs/screenshots/14-account-signin.png)
+
+The screenshot shows the real login interface using a documentation fixture, with no private account details. Local development can still use `AUTH_MODE=local`. For a public release, follow [Deploy with Vercel and Neon](DEPLOYMENT.md); creating a PostgreSQL database named `auth` alone does not activate Neon Auth.
+
 ### 1. Bring your content and define your audience
 
 Upload MP4, MOV, or WebM, preview the selected video, and describe the intended audience and message. Alternatively, paste a public link and supply its transcript or caption. Choose a panel size and optionally include people outside your intended audience.
@@ -294,10 +302,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for state flow, cache invalidation, persi
 - Simulation history/results and new graph checkpoints are stored in your PostgreSQL database. With Neon, that storage is remote.
 - Uploaded media, sampled frames, JSON response caches, version metadata, and the local chat transcript remain under `DATA_DIR` (default `data/`). Back up **both PostgreSQL and this directory**.
 - Groq receives submitted content context, sampled frames/audio when applicable, and audience descriptions. Provider retention follows your provider agreement.
-- No account connection, real follower graph, actual retention measurement, or live social analytics is available.
+- No social-platform account connection, real follower graph, actual retention measurement, or live social analytics is available.
 - Sharing scenarios use uncalibrated assumptions: 6% sharing-intent realization, 0.65 wave decay, 65% within-cluster affinity, and four exposure waves. Engagement uses a separate 12% realization prior.
 - The visual contact network has its own seed/delivery rules. Unreached viewers are independently evaluated as controls and do not count as cascade reach.
-- This remains a **single-user, single-process workspace**. A polished UI and PostgreSQL do not provide multi-tenant authentication, a distributed job queue, or production SaaS operations. `APP_PASSWORD` is optional local workspace protection. The default server binds to `127.0.0.1`.
+- Hosted mode supports **separate Neon accounts and owner-scoped data access**. The backend remains a single process with an exclusive database lock and persistent media volume. Durable mode recovers queued work after restart; admission limits bound saved runs, viewer usage and chat requests. This is not a distributed worker service. `APP_PASSWORD` remains optional local protection, and the default development server binds to `127.0.0.1`.
+- Vercel serves the static website and proxies protected API requests to a persistent Python backend. See [deployment instructions and remaining production work](DEPLOYMENT.md). Public launch still requires real-domain acceptance tests, email delivery, backups, monitoring and abuse controls.
 
 ## Troubleshooting
 

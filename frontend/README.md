@@ -1,12 +1,15 @@
 # Working on Ripple's interface
 
-The Python server serves committed files from `app/static/`. End users do not need Node or a frontend development server.
+The Python server serves committed files from `app/static/`. End users do not need Node or a frontend development server. Vercel builds an explicit static artifact and routes private API requests to the persistent backend; see [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 For frontend changes, install Node.js 22 or newer, then run these commands from the repository root:
 
 ```sh
 npm ci
 npm run build
+npm run test:auth
+npm run test:auth-browser
+npm run test:deploy
 npm run test:ui
 npm run test:browser
 ```
@@ -33,3 +36,7 @@ Keep illustrative geometry separate from actual results. Studio metrics, reactio
 The browser suite checks all eight main pages at 390px and 768px in both themes (32 overflow checks), verifies viewer-shortcut focus, and captures thirteen public screenshots. The inspector's shortcuts use actual saved profiles; they do not invent reactions or bypass the replay cutoff.
 
 Dependencies are pinned in the root lockfile. React/Motion and Lucide are bundled locally; Manrope and DM Sans are served locally with their OFL licenses. The runtime needs no font or JavaScript CDN access. Existing Python packaging copies the generated assets without adding Node to the server image.
+
+`frontend/auth.js` initializes the official Neon client. `auth-flow.mjs` implements signup, verification codes, recovery, renewal and sign-out. The pinned beta SDK shares a session-cache hook between `/get-session` and `/token`; the renewal path explicitly bypasses that cache to obtain a fresh JWT response. The SDK consumes the cache-bypass header locally. The browser suite tests this against the actual bundle. Do not remove this behavior without testing the SDK replacement.
+
+`test:auth-browser` uses mocked accounts and produces `14-account-signin.png`. Set the optional public `RIPPLE_LIVE_AUTH_URL` only when you want a read-only anonymous-session check against a real Neon tenant. It never creates an account or sends an email. Real email delivery and Safari cookie behavior must still be checked on the deployed domain.

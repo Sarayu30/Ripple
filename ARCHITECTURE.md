@@ -91,11 +91,12 @@ The original Groq adapter is retained to preserve pacing, safe errors and compat
 
 ## Known operating limits
 
-- Local single-user, single-process service; no distributed workers or tenant isolation.
+- Public Neon Auth accounts are verified with tenant JWKS, EdDSA signatures, issuer/audience, expiry and verified-email claims. Storage queries scope records to the verified account; private media and exports check ownership first. Optional local Basic accounts remain supported.
+- One backend process owns an exclusive PostgreSQL lock. Durable queue recovery works with a persistent media volume; there are no distributed workers or shared object storage. Vercel serves static assets and routes API traffic to this backend. See [DEPLOYMENT.md](DEPLOYMENT.md).
 - Results rely on one model family and may exhibit correlated bias.
 - Synthetic panels are not representative human studies.
 - Video sampling does not observe continuous motion or actual retention.
 - What-if video changes are descriptions, not rendered replacement media.
 - Reports are portable Markdown and full JSON, not designed PDF exports.
-- Restarts require the user to Resume affected runs.
+- Durable mode resumes queued/running work after a controlled restart. Inline development mode marks interrupted runs for manual Resume. Cancellation preserves checkpoints; deletion failures retain a retryable record.
 - No social publishing, external analytics, Deep Agents package or MCP server is implemented.
