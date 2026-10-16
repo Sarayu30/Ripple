@@ -73,10 +73,13 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts()
 
 @app.middleware('http')
 async def security(request: Request, call_next):
-    if settings.production() and not secrets.compare_digest(request.headers.get('x-ripple-origin-secret', ''), os.getenv('ORIGIN_SECRET', '')):
+    probe = request.method == 'GET' and request.url.path == '/healthz'
+    header = request.headers.get('authorization', '')
+    if settings.production() and not probe and not secrets.compare_digest(request.headers.get('x-ripple-origin-secret', ''), os.getenv('ORIGIN_SECRET', '')):
         return JSONResponse({'detail': 'Use the published application address.'}, 403, headers={'Cache-Control':'no-store'})
-    if auth.managed():
-        header = request.headers.get('authorization', '')
+    if probe:
+        user = 'public'
+    elif auth.managed():
         token = header[7:] if header.startswith('Bearer ') else request.cookies.get('ripple_session', '')
         public = request.url.path in ('/', '/auth-config.js', '/api/auth/logout') or request.url.path.startswith('/static/')
         user = 'public' if public else await asyncio.to_thread(auth.verify_session, token)
@@ -155,6 +158,7 @@ async def logout():
 @app.get('/api/health/live')
 async def health_live(): return {'status': 'ok'}
 
+@app.get('/healthz')
 @app.get('/api/health/ready')
 async def health_ready():
     def check():

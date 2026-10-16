@@ -19,6 +19,10 @@ def public_origin():
 
 def allowed_hosts():
     hosts = [x.strip() for x in os.getenv('ALLOWED_HOSTS', '').split(',') if x.strip()]
+    # Render supplies this server-side hostname; it is not taken from a request.
+    render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME', '')
+    if render_host and render_host.endswith('.onrender.com') and all(c.isalnum() or c in '.-' for c in render_host):
+        hosts.append(render_host)
     return hosts or ['localhost', '127.0.0.1', '[::1]', 'testserver']
 
 
