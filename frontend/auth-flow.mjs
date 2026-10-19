@@ -53,7 +53,7 @@ export function startAuthentication(client, page = window) {
       let mode = recovering ? 'recover' : data?.user && !data.user.emailVerified ? 'verify' : 'signin';
       main.innerHTML = `<section class="card auth-card"><div class="eyebrow">YOUR PRIVATE RIPPLE WORKSPACE</div>
         <h1 id="account-title">Explore your next idea.</h1>
-        <p>Rehearse your content with an AI audience. Your simulations, videos and conversations stay in your account.</p>
+        <p>Rehearse your content with an AI audience. Your analysis, suggestions and conversations stay in your account. Uploaded videos are deleted after analysis.</p>
         <form id="account-form">
         <label class="field" id="account-name-field" hidden><span>Your name</span><input name="name" autocomplete="name" maxlength="100"></label>
         <label class="field" id="account-email-field"><span>Email</span><input name="email" type="email" autocomplete="email" required></label>

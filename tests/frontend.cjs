@@ -18,6 +18,9 @@ const reaction={personaName:profile.personaName,personaType:profile.personaType,
 const result={analysis:{summary:'Checklist',limitations:[]},outcome:{metrics:{clarityScore:80},segments:[{name:'Designer',count:1,relevance:80,share:70,dominantReaction:'share',insight:'Needs proof'}],assumptions:{waveDecay:0.65},confidence:50},recommendations:{topEdits:['Show an example','Clarify benefit','Add CTA'],alternativeHook:'See the result',caption:'Try this',cta:'Save',sources:['viewer:0']},insights:{summary:'Proof would help',patterns:[{finding:'Needs proof',sources:['viewer:0']}]},personas:[reaction],profiles:[profile],evidence:{transcript:true},limitations:['Synthetic'],provenance:[{id:'viewer:0',kind:'synthetic reaction',description:'Needs proof'}]};
 const payload={title:'Test content',audience:'Independent designers',angle:'Useful checklist',goal:'engagement',platform:'Instagram',sourceType:'link',size:25,caption:'Checklist',cta:'Save'};
 const row={id:'one',title:'Test content',status:'completed',stage:'Complete',progress:100,payload,result};
+// Saved upload records show observations rather than requesting deleted media.
+row.payload.sourceType='upload';
+row.result.metadata={duration:4,width:320,height:240,codec:'test',frames:[{file:'frame-0.jpg',seconds:0}]};
 const live={nodes:[{id:'0',profile,cohort:'target',status:'completed',reaction,x:.4,y:.4},{id:'1',profile:{...profile,personaName:'002 · Adjacent'},cohort:'outside',status:'completed',reaction:{...reaction,likelyAction:'scroll'},x:.7,y:.6}],links:[{source:'0',target:'1'}],events:[],summary:{}};
 let listing=[],submissions=[];
 w.fetch=async(url,opts={})=>{
@@ -39,6 +42,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
  await w.navigate('new');const newForm=w.document.querySelector('#testForm');w.document.querySelector('[data-source="link"]').click();assert.equal(newForm.elements.namedItem('sourceType').value,'link');assert(!w.document.querySelector('#linkArea').classList.contains('hidden'));
  listing=[row,{...row,id:'two',title:'Revision'}];await w.openTest('one');await tick();
  assert.equal(w.document.querySelectorAll('.studio-kpi').length,3);
+ assert.equal(w.document.querySelectorAll('video[src^="/api/"], img[src*="/frames/"]').length,0);
  w.document.querySelector('#view3d').click();assert.equal(w.document.querySelector('#view3d').getAttribute('aria-pressed'),'true');
  w.document.querySelector('#view2d').click();assert.equal(w.document.querySelector('#view2d').getAttribute('aria-pressed'),'true');
  assert(w.document.querySelector('#replayRange'));
