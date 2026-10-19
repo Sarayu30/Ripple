@@ -44,7 +44,7 @@ Only `NEON_AUTH_BASE_URL` is public. Ripple does not need a Neon admin API key o
 
 In Render choose **New → Web Service**, connect GitHub, and select the Ripple repository. Set branch **version_2**, runtime **Docker**, root directory blank, Dockerfile path **./Dockerfile**, and instance type **Free ($0/month)**. The Docker image already includes FFmpeg and creates the writable temporary directory `/app/data`. Do not add a disk or a Render database.
 
-Under Advanced, use health check path **/healthz**. Leave the Docker command unset; the image starts one Uvicorn worker on port 8000. Render detects this port. Keep Auto-Deploy off for the initial release. If deploying from a Blueprint instead, `render.yaml` declares only a Free web service.
+Under Advanced, use health check path **/healthz**. Leave the Docker command unset; the image starts one Uvicorn worker on Render's `PORT` (default `10000`). Using the assigned port avoids a port-discovery restart colliding with the running worker's database lock. Keep Auto-Deploy off for the initial release. If deploying from a Blueprint instead, `render.yaml` declares only a Free web service.
 
 Set these environment variables through the hosting dashboard, never in a Git commit:
 

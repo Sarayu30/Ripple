@@ -54,3 +54,5 @@ jobs:
           npm run test:browser
       - name: Test backend with disposable PostgreSQL
         run: python -m pytest -q --tb=short
+      - name: Verify production Docker startup and assigned ports
+        run: bash tests/docker-smoke.sh

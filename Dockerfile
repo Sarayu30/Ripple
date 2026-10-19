@@ -7,5 +7,5 @@ COPY app ./app
 COPY skills ./skills
 RUN useradd --create-home ripple && mkdir /app/data && chown ripple:ripple /app/data
 USER ripple
-EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+EXPOSE 10000
+CMD ["sh", "-c", "exec python -m uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-10000}\" --workers 1"]
