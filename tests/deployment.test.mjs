@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, readFile, readdir} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, readdir} from 'node:fs/promises';
 import path from 'node:path';
 import {buildWeb, configuration} from '../frontend/vercel.mjs';
 
@@ -12,6 +12,7 @@ test('reject secret keys and credential-bearing backend URLs', () => {
   assert.throws(() => configuration({...env, ORIGIN_SECRET:''}));
 });
 test('public artifact excludes server secrets and disables API caching', async () => {
+  await mkdir(path.resolve('artifacts'), {recursive: true});
   const output = await mkdtemp(path.resolve('artifacts', 'vercel-test-'));
   await buildWeb(env, output);
   async function content(root) {
