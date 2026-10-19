@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 export function configuration(env) {
   const origin = env.RIPPLE_BACKEND_ORIGIN || '';
   let backend;
-  try { backend = new URL(origin); } catch { throw Error('Set RIPPLE_BACKEND_ORIGIN to the persistent HTTPS backend.'); }
+  try { backend = new URL(origin); } catch { throw Error('Set RIPPLE_BACKEND_ORIGIN to the HTTPS backend.'); }
   if (backend.protocol !== 'https:' || backend.username || backend.password || backend.pathname !== '/' || backend.search || backend.hash || backend.port) {
     throw Error('Backend origin must be HTTPS, without credentials, paths or custom ports.');
   }

@@ -1,0 +1,48 @@
+# Optional Blueprint. The manual Web Service setup uses the same settings.
+# No persistent disk or additional database is created.
+services:
+  - type: web
+    name: ripple-api
+    runtime: docker
+    plan: free
+    branch: version_2
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: neon
+      - key: DATA_DIR
+        value: /app/data
+      - key: JOB_MODE
+        value: durable
+      - key: MAX_RUNNING_JOBS
+        value: "1"
+      - key: MAX_UPLOAD_MB
+        value: "25"
+      - key: AGENT_CONCURRENCY
+        value: "1"
+      - key: REQUEST_INTERVAL_SECONDS
+        value: "4"
+      - key: DATABASE_SCHEMA
+        value: ripple
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false
+      - key: GROQ_VISION_MODEL
+        sync: false
+      - key: GROQ_TRANSCRIPTION_MODEL
+        value: whisper-large-v3-turbo
+      - key: NEON_AUTH_BASE_URL
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: ORIGIN_SECRET
+        generateValue: true

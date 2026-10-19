@@ -1,6 +1,6 @@
 # Ripple feature preservation checklist
 
-The redesign keeps the existing API paths, Groq provider behavior, six agent stages, generated schemas, scoring, propagation arithmetic, and saved results. PostgreSQL replaces the history store and handles new checkpoints; legacy checkpoint files remain available for recovery.
+The redesign keeps Groq provider behavior, six agent stages, generated schemas, scoring, propagation arithmetic, and saved results. PostgreSQL stores history, text caches and new checkpoints; legacy checkpoint files remain available for recovery. The requested temporary-media policy removes video/frame-serving routes and saved media playback; the written analysis remains available.
 
 “Verified” below refers to the named automated checks, not an exhaustive live-provider run. Public screenshots use an isolated browser fixture server.
 
@@ -18,7 +18,7 @@ The redesign keeps the existing API paths, Groq provider behavior, six agent sta
 | Panel sizes and distribution assumptions | New simulation → test audience / distribution details | Existing schema and aggregation tests |
 | Explicit provider consent | Original submission checkbox | Input schema and HTTP tests; unchanged validation |
 | Model availability / provider settings | Provider setup, including mobile navigation | Provider adapter/model tests; responsive navigation checks |
-| Content analysis and sampled frames | Studio → Your content / full analysis; evidence disclosure | Browser diagnostic drawer; backend extraction and pipeline tests |
+| Content analysis and frame observations | Studio → Your content / full analysis; evidence disclosure with sample timestamps | Browser diagnostic drawer; backend extraction, deletion and saved-observation tests |
 | Six-stage agent workflow | Plain-language stage strip; AI activity disclosure | Real LangGraph execution with fixture providers |
 | Independent viewer evaluation | Existing viewer workflow unchanged | Independent-call, failure and response reuse tests |
 | Target and outside audience | Map filters, legend and viewer audience chip | Browser cohort-filter counts |

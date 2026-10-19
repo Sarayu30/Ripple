@@ -40,7 +40,7 @@ Screenshots containing results use **clearly labeled documentation fixtures**, n
 
 ### Your account, your rehearsal space
 
-Hosted Ripple uses **Neon Auth** for signup, login, email verification and password recovery. Create an account, verify the code or link sent to your email, then sign in. **Forgot password?** sends a recovery link; **Send verification code** helps you finish an unverified signup. Each account can access only its own simulations, media, conversations and exports.
+Hosted Ripple uses **Neon Auth** for signup, login, email verification and password recovery. Create an account, verify the code or link sent to your email, then sign in. **Forgot password?** sends a recovery link; **Send verification code** helps you finish an unverified signup. Each account can access only its own simulations, conversations and exports. Videos and extracted images are temporary: Ripple deletes them after analysis and saves the written observations and suggestions.
 
 ![Ripple account screen with email login, signup, recovery and verification controls](docs/screenshots/14-account-signin.png)
 
@@ -116,7 +116,7 @@ The Studio separates **what happened**, **why it happened**, and **what should I
 
 **Why it helps:** you can turn the audience feedback into a specific next experiment, rather than guessing what to change.
 
-Expandable sections retain audience segments, full content diagnostics and scores, sharing scenarios, sampled source frames, version history, assumptions, evidence references, and AI execution activity. Download a creator-friendly Markdown report or export the full saved JSON.
+Expandable sections retain audience segments, full content diagnostics and scores, sharing scenarios, sampled-frame timestamps and observations, version history, assumptions, evidence references, and AI execution activity. Original media is deleted after analysis. Download a creator-friendly Markdown report or export the full saved JSON.
 
 ### 4. Ask Ripple about your simulation
 
@@ -130,7 +130,7 @@ Use the suggested questions or type your own. Asking a question does not change 
 
 ### 5. Test a change and compare versions
 
-Choose an original simulation, change a hook, caption, CTA, audience, or describe a content variation, then approve the revised run. Each version keeps its own input, media copies, and results.
+Choose an original simulation, change a hook, caption, CTA, audience, or describe a content variation, then approve the revised run. Each version keeps its own input, saved text observations and results. These are hypothetical edits; Ripple does not need or retain a copy of your video to evaluate them.
 
 ![Original and revised versions with metric changes, segment differences, and recommendations](docs/screenshots/05-compare-versions.png)
 
@@ -258,7 +258,7 @@ Configure `.env` first, then run:
 docker compose up --build
 ```
 
-The image includes FFmpeg and the runtime agent skills. PostgreSQL is supplied through `DATABASE_URL`; Compose does not create a second database service. Local media and caches persist in the `ripple-data` volume. This volume is separate from a host installation’s `data/` directory—copy or mount existing data deliberately when moving installations.
+The image includes FFmpeg and the runtime agent skills. PostgreSQL is supplied through `DATABASE_URL`; Compose does not create a second database service. The `ripple-data` volume is an optional local workspace; new text caches are in PostgreSQL and media is deleted after analysis. This volume is separate from a host installation’s `data/` directory—copy or mount existing data deliberately when moving installations.
 
 ## Your first simulation
 
@@ -300,13 +300,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for state flow, cache invalidation, persi
 ## Data, privacy, and operating limits
 
 - Simulation history/results and new graph checkpoints are stored in your PostgreSQL database. With Neon, that storage is remote.
-- Uploaded media, sampled frames, JSON response caches, version metadata, and the local chat transcript remain under `DATA_DIR` (default `data/`). Back up **both PostgreSQL and this directory**.
+- Uploaded video, sampled frames and extracted audio use `DATA_DIR` temporarily and are deleted after content observations are saved, or when processing fails/cancels. Saved results have no media playback. Text caches, replay events, chat and version metadata are stored in PostgreSQL and survive loss of the temporary disk.
 - Groq receives submitted content context, sampled frames/audio when applicable, and audience descriptions. Provider retention follows your provider agreement.
 - No social-platform account connection, real follower graph, actual retention measurement, or live social analytics is available.
 - Sharing scenarios use uncalibrated assumptions: 6% sharing-intent realization, 0.65 wave decay, 65% within-cluster affinity, and four exposure waves. Engagement uses a separate 12% realization prior.
 - The visual contact network has its own seed/delivery rules. Unreached viewers are independently evaluated as controls and do not count as cascade reach.
-- Hosted mode supports **separate Neon accounts and owner-scoped data access**. The backend remains a single process with an exclusive database lock and persistent media volume. Durable mode recovers queued work after restart; admission limits bound saved runs, viewer usage and chat requests. This is not a distributed worker service. `APP_PASSWORD` remains optional local protection, and the default development server binds to `127.0.0.1`.
-- Vercel serves the static website and proxies protected API requests to a persistent Python backend. See [deployment instructions and remaining production work](DEPLOYMENT.md). Public launch still requires real-domain acceptance tests, email delivery, backups, monitoring and abuse controls.
+- Hosted mode supports **separate Neon accounts and owner-scoped data access**. One backend process holds an exclusive database lock. Durable mode resumes from saved text/checkpoints after a restart; an upload lost before analysis requires a new submission. Admission limits bound saved runs, viewer usage and chat requests. `APP_PASSWORD` remains optional local protection, and the default development server binds to `127.0.0.1`.
+- Vercel serves the website, Render Free processes content, and Neon stores accounts and research. Your computer does not serve visitors. No permanent media storage is required. Free services have usage limits and cold starts. See [deployment instructions and remaining production work](DEPLOYMENT.md).
 
 ## Troubleshooting
 
@@ -319,7 +319,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for state flow, cache invalidation, persi
 | Groq model error | Open **Provider setup**, check available model IDs, update `.env`, then restart. |
 | Rate limit or paused simulation | Wait for the provider cooldown, then choose **Resume simulation**. Keep concurrency low. Completed viewer responses are reused. |
 | No reactions or incomplete suggestions | Read the surfaced error. Ripple does not fabricate missing work. Resume after correcting the issue. |
-| Previous media missing after moving machines | Restore `DATA_DIR` as well as the database. PostgreSQL does not contain the uploaded video files. |
+| Temporary upload no longer available | The server restarted before observations were saved. Start a new simulation with the video. Completed results and suggestions remain in Neon. |
 
 ## Development and validation
 
@@ -341,11 +341,11 @@ See [VALIDATION.md](VALIDATION.md) for checks actually run and their limits.
 
 ## API and project guide
 
-Existing API routes are retained:
+Application API routes:
 
 - Configuration, provider availability, and source preview: `/api/config`, `/api/providers/groq/check`, `/api/preview`.
 - Create/list/open/delete simulations: `/api/tests`, `/api/tests/{id}`.
-- Resume, live network, private video/frames, and JSON export: `/api/tests/{id}/retry`, `/live`, `/video`, `/frames/{name}`, `/export`.
+- Resume, live network, and JSON export: `/api/tests/{id}/retry`, `/live`, `/export`. Video/frame-serving routes have been removed because media is temporary.
 - Versions, comparisons, chat, and reports: `/api/tests/{id}/versions`, `/compare/{other}`, `/chat`, `/report`.
 
 Mutation requests require `X-Ripple-Client: 1` and pass same-origin checks. Model keys and database credentials are never part of browser configuration.

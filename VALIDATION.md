@@ -1,6 +1,15 @@
 # Validation performed
 
-Updated: 2026-10-12. The latest UI checks are below; the earlier React and PostgreSQL sections record their respective verification passes.
+Updated: 2026-10-19. The sections below distinguish automated checks from live deployment acceptance.
+
+## Temporary media and free-cloud preparation — October 18
+
+- October 19: backend regression verification remains pending. Earlier runs showed failures without retained tracebacks; targeted reruns encountered very slow Neon connectivity (a separate connection probe took 32 seconds). Do not interpret unfinished runs as passes. GitHub checks use disposable PostgreSQL to verify this release independently of the remote database.
+- `npm run build`, `test:ui`, `test:auth`, `test:auth-browser`, `test:deploy`, and `test:browser` passed. UI checks cover saved upload records without requests for deleted images or video. The browser suite passed 32 responsive checks and refreshed the README screenshots; the new-input and account screenshots were visually reviewed.
+- All 10 standalone configuration/authentication unit tests passed, including production startup with a temporary directory and required origin/authentication safeguards.
+- The configured database URL, provider key, origin secret and local password were compared against tracked/new deployment files without printing their values; no matches were found. `.env` remains ignored and untracked.
+- Render's Docker runtime, Free plan, health-check and automatic-deployment settings were checked against its current Blueprint documentation. No paid service or disk was created. Docker is not available in this local environment, so the actual container build and public-domain acceptance must be checked on Render.
+- Browser auth checks use fixtures. Actual signup, verification/recovery email delivery, Vercel-to-Render routing, uploaded-video processing on Free compute, and browser cookie compatibility still need live acceptance checks after deployment.
 
 ## Workspace contrast and page review — October 12
 
@@ -66,7 +75,7 @@ The 2026-10-04 validation record documented a real 25-viewer Groq text/transcrip
 
 ## Deployment limits
 
-Docker configuration was reviewed; an image build was not run. The app remains single-user and single-process. Public multi-tenant deployment, distributed jobs, load testing, disaster recovery drills and predictive calibration are outside this change. Neon stores database data remotely, while media and JSON caches still require local persistence and backups.
+Docker configuration was reviewed; an image build was not run. The backend runs as one process, with account-scoped records and Neon Auth. Public signup and cross-account isolation still require live deployment acceptance. Distributed jobs, load testing, disaster recovery drills and predictive calibration have not been validated. New runs store textual caches and workflow state in PostgreSQL; media is temporary. Older SQLite workflow checkpoints require their original disk for exact-stage recovery.
 
 ## Reproduce
 
