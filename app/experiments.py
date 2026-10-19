@@ -20,27 +20,29 @@ def create_version(parent, edit):
     creative_changed=any(k in changes for k in ('hook','caption','cta','variation'))
     directory.mkdir(mode=0o700)
     try:
-        for path in old.iterdir():
-            if path.name.startswith(('source.','frame-')):
-                shutil.copy2(path,directory/path.name)
+        from .budgets import admit
+        admit(id,payload,preparing=True)
         context=cached(old,'context.json')
+        if not context:
+            raise ValueError('Saved content analysis is unavailable. Submit a new simulation with the content.')
         if context:
             for key in ('audience','caption','cta'): context[key]=payload[key]
             context['evidence']['caption']=bool(payload['caption'])
             # Preserve proposals inherited from the prior version.
             context['experiment']={**context.get('experiment',{}),**changes}
             checkpoint(directory,'context.json',context)
-        if not creative_changed and (old/'analysis.json').exists():
-            shutil.copy2(old/'analysis.json',directory/'analysis.json')
+        analysis=cached(old,'analysis.json')
+        if not creative_changed and analysis:
+            checkpoint(directory,'analysis.json',analysis)
         if not audience_changed:
             profiles=cached(old,'profiles.json') or (parent.get('result') or {}).get('profiles')
             if profiles: checkpoint(directory,'profiles.json',profiles)
         version={'parentId':parent['id'],'rootId':(cached(old,'experiment.json') or {}).get('rootId',parent['id']),'changes':{**(context or {}).get('experiment',{}),**changes},'currentChanges':changes,'sharedAudience':not audience_changed,'approved':True,'rerunFrom':'content_analysis' if creative_changed else 'audience_research'}
         checkpoint(directory,'experiment.json',version)
-        from .budgets import admit
-        admit(id,payload)
+        store.update(id,status='queued')
         return id
     except Exception:
+        store.delete(id)
         shutil.rmtree(directory,ignore_errors=True)
         raise
 

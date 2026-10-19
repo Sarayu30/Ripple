@@ -18,3 +18,12 @@ class SettingsTests(unittest.TestCase):
     def test_vercel_cannot_start_background_backend(self):
         with patch.dict(os.environ, {'VERCEL': '1'}, clear=True):
             with self.assertRaisesRegex(RuntimeError, 'persistent backend'): settings.validate()
+
+    def test_production_accepts_temporary_disk_with_protected_accounts(self):
+        from pathlib import Path
+        values = {'APP_ENV':'production', 'PUBLIC_ORIGIN':'https://ripple.example.com',
+                  'ALLOWED_HOSTS':'ripple.example.com', 'AUTH_MODE':'local',
+                  'APP_PASSWORD':'x'*32, 'ORIGIN_SECRET':'y'*32,
+                  'DATA_DIR':str(Path('artifacts').resolve()), 'JOB_MODE':'durable'}
+        with patch.dict(os.environ, values, clear=True):
+            settings.validate()

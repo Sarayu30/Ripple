@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph, START, END
 from ..checkpoints import saver as checkpoint_saver
 from .. import store
 from ..providers import ProviderError
-from ..simulation import checkpoint, cached
+from ..simulation import checkpoint, cached, invalidate
 from ..network import network_summary
 from . import content, audience, viewers, insights, strategist
 from .analytics import propagation
@@ -87,7 +87,7 @@ async def execute_graph(id,semaphore,provider_factory):
                 # Partial viewer recovery must refresh downstream insights.
                 if snapshot.values.get('failures'):
                     for name in ('insights.json','recommendations.json'):
-                        (directory/name).unlink(missing_ok=True)
+                        invalidate(directory,name)
                 row=store.get(id)
                 input_row={key:row[key] for key in ('id','title','created','payload')}
                 await graph.ainvoke({'row':input_row,'completed':False},config)
@@ -102,3 +102,9 @@ async def execute_graph(id,semaphore,provider_factory):
     except Exception:
         logging.exception('Simulation %s failed',id)
         store.update(id,status='failed',stage='Needs attention',error='Unexpected processing failure. Check server logs; retry uses saved progress.')
+    finally:
+        from ..retention import purge_media
+        try:
+            purge_media(directory)
+        except OSError:
+            logging.error('Temporary media cleanup will be retried for simulation %s', id)

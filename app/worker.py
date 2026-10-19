@@ -1,11 +1,12 @@
-"""Durable single-runner queue for a backend with one persistent media volume.
+"""Durable single-runner queue with temporary uploads and PostgreSQL progress.
 
 An exclusive PostgreSQL advisory lock prevents overlapping backend deployments
-from processing the same files. This is deliberately not a distributed worker.
+from processing the same jobs. This is deliberately not a distributed worker.
 """
 import asyncio
 import logging
 import os
+import time
 import psycopg
 from . import auth, store
 
@@ -28,8 +29,18 @@ def acquire():
 
 
 def recover():
+    from .retention import needs_upload, REUPLOAD_MESSAGE
     with store.db() as connection:
+        connection.execute("UPDATE tests SET status='failed', stage='Needs attention', error='Version preparation was interrupted. Create the version again.' WHERE status='preparing'")
         connection.execute("UPDATE tests SET status='queued', stage='Resuming saved work', error=NULL WHERE status='running'")
+        rows = connection.execute("SELECT id,owner_id FROM tests WHERE status='queued'").fetchall()
+    for row in rows:
+        token = auth.identity.set(row['owner_id'])
+        try:
+            if needs_upload(store.get(row['id'])):
+                store.update(row['id'],status='failed',stage='Upload needed',error=REUPLOAD_MESSAGE)
+        finally:
+            auth.identity.reset(token)
 
 
 def pending(limit):
@@ -38,11 +49,16 @@ def pending(limit):
 
 
 async def run(connection, jobs, start):
+    last_sweep = 0
     try:
         while True:
             # Losing the exclusive connection stops processing, instead of silently
             # continuing without ownership while another backend takes the lock.
             await asyncio.to_thread(connection.execute, 'SELECT 1')
+            if time.monotonic() - last_sweep >= 60:
+                from .retention import sweep
+                await asyncio.to_thread(sweep)
+                last_sweep = time.monotonic()
             capacity = max(0, int(os.getenv('MAX_RUNNING_JOBS', '2')) - len(jobs))
             for row in await asyncio.to_thread(pending, capacity):
                 if row['id'] in jobs: continue

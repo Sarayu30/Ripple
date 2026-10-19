@@ -60,8 +60,8 @@ def test_versions_invalidate_only_affected_work(monkeypatch):
     original=store.get(id)
     child=create_version(original,ExperimentInput(title='New hook',hook='Show the result first',approved=True))
     assert simulation.cached(store.MEDIA/child,'profiles.json')==original['result']['profiles']
-    assert not (store.MEDIA/child/'analysis.json').exists()
-    assert not (store.MEDIA/child/'responses.json').exists()
+    assert simulation.cached(store.MEDIA/child,'analysis.json') is None
+    assert simulation.cached(store.MEDIA/child,'responses.json') is None
     FixtureProvider.calls=[];asyncio.run(simulation.execute(child,asyncio.Semaphore(2)))
     revised=store.get(child)
     assert revised['status']=='completed'
@@ -72,8 +72,8 @@ def test_versions_invalidate_only_affected_work(monkeypatch):
     assert all(v==0 for v in d['metricDeltas'].values())
     assert 'Original recommendations' in creator_report(revised)
     audience=create_version(original,ExperimentInput(title='Different audience',audience='Experienced architects designing homes',approved=True))
-    assert (store.MEDIA/audience/'analysis.json').exists()
-    assert not (store.MEDIA/audience/'profiles.json').exists()
+    assert simulation.cached(store.MEDIA/audience,'analysis.json')
+    assert simulation.cached(store.MEDIA/audience,'profiles.json') is None
     FixtureProvider.calls=[];asyncio.run(simulation.execute(audience,asyncio.Semaphore(2)))
     assert not any(x[0]=='Analysis' for x in FixtureProvider.calls)
     assert any(x[0]=='Profiles' for x in FixtureProvider.calls)

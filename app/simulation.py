@@ -45,14 +45,29 @@ def aggregate(reactions, payload, evidence):
     return {'metrics':metrics,'verdict':verdict,'reachRange':[low,high],'engagementRate':round(engagement,2), 'cascadeDepth':sum(w['reach']>=1 for w in waves[1:]),'confidence':confidence,'waves':waves,'network':edges,'segments':segments,'sentiments':dict(Counter(r['sentiment'] for r in reactions)), 'emotions':dict(Counter(r['emotion'] for r in reactions)), 'completed':len(reactions),'requested':payload['size'], 'disagreement':round(pstdev(r['hookScore'] for r in reactions),1), 'assumptions':{'seedReach':payload['seedReach'],'contactsPerShare':payload['contactsPerShare'],'shareIntentRealization':0.06,'engagementIntentRealization':0.12,'waveDecay':0.65,'withinClusterAffinity':0.65,'reachRange':'Sensitivity envelope: seed × 0.6–1.4 plus modeled secondary exposure × 0.3–2.0. Not a statistical interval.','confidence':'Evidence/completion heuristic capped at 75; not probability of accuracy. More personas do not validate the model.','engagement':'Mean maximum engagement intent × 12% realization prior; uncalibrated scenario, not a platform forecast.','reach':'Exposure opportunities, not deduplicated unique viewers. No account analytics, ranking model or historical calibration.'}}
 
 def checkpoint(directory, name, data):
-    path = directory / name
-    temporary = directory / (name+'.tmp')
-    temporary.write_text(json.dumps(data),encoding='utf-8')
-    temporary.replace(path)
+    from . import store
+    store.save_artifact(directory.name, name, data)
 
 def cached(directory,name):
+    from . import store
+    value = store.load_artifact(directory.name, name)
+    if value is not None:
+        return value
+    # Migrate legacy text caches lazily, after checking account ownership.
     path = directory/name
-    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
+    if path.exists() and store.get(directory.name):
+        value = json.loads(path.read_text(encoding='utf-8'))
+        checkpoint(directory, name, value)
+        return value
+    return None
+
+
+def invalidate(directory, name):
+    from . import store
+    if not store.get(directory.name):
+        raise ValueError('Simulation unavailable.')
+    store.delete_artifact(directory.name, name)
+    (directory/name).unlink(missing_ok=True)
 
 async def execute(id, semaphore):
     from .agents.orchestrator import execute_graph

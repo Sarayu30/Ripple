@@ -45,7 +45,7 @@ def charge(kind, units):
         charge_in(connection, kind, units)
 
 
-def admit(identifier, payload, key=None, media_hash=''):
+def admit(identifier, payload, key=None, media_hash='', *, preparing=False):
     if key and not re.fullmatch(r'[A-Za-z0-9_-]{16,100}', key):
         raise HTTPException(422, 'Invalid submission key.')
     fingerprint = hashlib.sha256((json.dumps(payload, sort_keys=True) + media_hash).encode()).hexdigest()
@@ -58,7 +58,7 @@ def admit(identifier, payload, key=None, media_hash=''):
                     raise HTTPException(409, 'This submission key was already used for different content.')
                 return previous['test_id']
         counts = connection.execute("SELECT count(*) AS active, count(*) FILTER (WHERE owner_id=%s) AS own "
-                                    "FROM tests WHERE status IN ('queued','running')", (auth.owner(),)).fetchone()
+                                    "FROM tests WHERE status IN ('preparing','queued','running')", (auth.owner(),)).fetchone()
         if counts['active'] >= int(os.getenv('MAX_QUEUED_JOBS', '8')) or counts['own'] >= 2:
             raise HTTPException(429, 'The queue is full. Wait for current simulations to finish.')
         saved = connection.execute('SELECT count(*) AS count FROM tests WHERE owner_id=%s', (auth.owner(),)).fetchone()['count']
@@ -66,6 +66,8 @@ def admit(identifier, payload, key=None, media_hash=''):
             raise HTTPException(429, 'Your workspace storage allowance is full. Delete unused simulations first.')
         charge_in(connection, 'viewers', payload.get('size', 25))
         store.insert(connection, identifier, payload)
+        if preparing:
+            connection.execute("UPDATE tests SET status='preparing' WHERE id=%s", (identifier,))
         if key:
             connection.execute('INSERT INTO submission_keys VALUES (%s,%s,%s,%s)', (auth.owner(),key,fingerprint,identifier))
     return identifier

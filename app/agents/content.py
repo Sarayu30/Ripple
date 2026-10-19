@@ -3,6 +3,7 @@ from ..media import extract, preview
 from ..schemas import Analysis
 from ..providers import ProviderError
 from .skills import instruction
+from ..retention import purge_media, REUPLOAD_MESSAGE
 
 async def run(state, runtime):
     row=state["row"]; payload=row["payload"]; directory=runtime.directory
@@ -12,7 +13,7 @@ async def run(state, runtime):
         context = {'audience':payload['audience'],'angle':payload['angle'],'goal':payload['goal'],'platform':payload['platform'],'cta':payload['cta'],'caption':payload['caption'],'transcript':payload['transcript'],'limitations':[], 'evidence':{'caption':bool(payload['caption']),'transcript':bool(payload['transcript'])}}
         if payload['sourceType']=='upload':
             paths = list(directory.glob('source.*'))
-            if not paths: raise ValueError('Uploaded video is missing.')
+            if not paths: raise ValueError(REUPLOAD_MESSAGE)
             metadata, audio = await extract(paths[0],directory)
             context['metadata'] = metadata
             context['evidence']['metadata'] = True
@@ -42,6 +43,7 @@ async def run(state, runtime):
         if not context['evidence'].get('vision') and not context['transcript'] and not context['caption']:
             raise ValueError('Insufficient content evidence. Add the spoken transcript or caption, or upload a video with a working vision model. A URL and intended message alone cannot support content evaluation.')
         checkpoint(directory,'context.json',context)
+    purge_media(directory)
     experiment=cached(directory,'experiment.json')
     if experiment:
         context['experiment']=experiment['changes']

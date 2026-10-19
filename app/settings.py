@@ -42,10 +42,8 @@ def validate():
         public_config()
     elif not accounts() and len(os.getenv('APP_PASSWORD', '')) < 24:
         raise RuntimeError('Production requires invited accounts or an APP_PASSWORD of at least 24 characters.')
-    if os.getenv('PERSISTENT_DATA_CONFIRMED') != '1':
-        raise RuntimeError('Mount persistent DATA_DIR storage and set PERSISTENT_DATA_CONFIRMED=1.')
     if not os.path.isabs(os.getenv('DATA_DIR', '')):
-        raise RuntimeError('Production DATA_DIR must be an absolute persistent mount path.')
+        raise RuntimeError('Production DATA_DIR must be an absolute writable temporary path.')
     if os.getenv('JOB_MODE') != 'durable':
         raise RuntimeError('Production requires JOB_MODE=durable for queued recovery.')
     if len(os.getenv('ORIGIN_SECRET', '')) < 32:

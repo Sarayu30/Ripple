@@ -97,6 +97,9 @@ def init():
         c.execute('CREATE INDEX IF NOT EXISTS tests_created_idx ON tests (created DESC)')
         c.execute("ALTER TABLE tests ADD COLUMN IF NOT EXISTS owner_id TEXT NOT NULL DEFAULT 'local'")
         c.execute('CREATE INDEX IF NOT EXISTS tests_owner_created_idx ON tests (owner_id, created DESC)')
+        c.execute('CREATE TABLE IF NOT EXISTS run_artifacts ('
+                  'run_id TEXT REFERENCES tests(id) ON DELETE CASCADE, name TEXT, data JSONB NOT NULL, '
+                  'PRIMARY KEY (run_id, name))')
         c.execute('CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, applied TIMESTAMPTZ DEFAULT now())')
         import_legacy(c)
         from .budgets import setup as setup_budgets
@@ -129,6 +132,30 @@ def get(id):
         for key in ('payload', 'result'):
             row[key] = json.loads(row[key]) if row[key] else None
     return row
+
+
+def save_artifact(id, name, data):
+    """Only textual analysis/state belongs here; never media bytes or data URLs."""
+    with db() as c:
+        result = c.execute('INSERT INTO run_artifacts (run_id,name,data) '
+                           'SELECT id,%s,%s::jsonb FROM tests WHERE id=%s AND owner_id=%s '
+                           'ON CONFLICT (run_id,name) DO UPDATE SET data=EXCLUDED.data',
+                           (name, json.dumps(data), id, owner()))
+        if result.rowcount != 1:
+            raise ValueError('Simulation unavailable for saving progress.')
+
+
+def load_artifact(id, name):
+    with db() as c:
+        row = c.execute('SELECT a.data FROM run_artifacts a JOIN tests t ON t.id=a.run_id '
+                        'WHERE t.id=%s AND t.owner_id=%s AND a.name=%s', (id, owner(), name)).fetchone()
+    return row['data'] if row else None
+
+
+def delete_artifact(id, name):
+    with db() as c:
+        c.execute('DELETE FROM run_artifacts a USING tests t WHERE a.run_id=t.id '
+                  'AND t.id=%s AND t.owner_id=%s AND a.name=%s', (id, owner(), name))
 
 def listing(limit=100, offset=0):
     if not 1 <= limit <= 100 or offset < 0:

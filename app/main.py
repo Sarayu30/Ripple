@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, Query
-from fastapi.responses import FileResponse, JSONResponse, Response, HTMLResponse
+from fastapi.responses import JSONResponse, Response, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import ValidationError
@@ -36,16 +36,20 @@ async def lifespan(app):
     global semaphore, submission_lock, queue_task
     settings.validate()
     await asyncio.to_thread(store.init)
+    from .retention import migrate_legacy_text, sweep
     semaphore = asyncio.Semaphore(max(1,min(10,int(os.getenv('AGENT_CONCURRENCY','1')))))
     submission_lock = asyncio.Lock()
     connection = await asyncio.to_thread(worker.acquire)
     try:
+        await asyncio.to_thread(migrate_legacy_text)
         if worker.enabled():
             await asyncio.to_thread(worker.recover)
+            await asyncio.to_thread(sweep)
             queue_task = asyncio.create_task(worker.run(connection, jobs, start_job))
         else:
             with store.db() as c:
                 c.execute("UPDATE tests SET status='interrupted', error='Server restarted. Resume saved work.' WHERE status IN ('queued','running')")
+            await asyncio.to_thread(sweep)
         yield
     finally:
         if queue_task:
@@ -265,6 +269,8 @@ def get(id: str):
 @serial_submission
 async def retry(id: str):
     row=find(id)
+    from .retention import needs_upload, REUPLOAD_MESSAGE
+    if needs_upload(row): raise HTTPException(409, REUPLOAD_MESSAGE)
     if id in jobs: raise HTTPException(409,'Test is already running.')
     if len(jobs)>=2: raise HTTPException(429,'Two tests are already running.')
     if row['status'] not in ('failed','partial','interrupted','cancelled'): raise HTTPException(409,'Only failed, interrupted, cancelled or partial tests can be retried.')
@@ -285,6 +291,8 @@ async def cancel(id: str):
     if task:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+    from .retention import purge_media
+    await asyncio.to_thread(purge_media, store.MEDIA/id)
     return {'id':id, 'status':'cancelled'}
 
 @app.delete('/api/tests/{id}')
@@ -301,15 +309,6 @@ async def delete(id: str):
     except Exception:
         raise HTTPException(503, 'Deletion is incomplete. Retry to finish removing the remaining data.') from None
     return {'deleted':True}
-
-@app.get('/api/tests/{id}/frames/{name}')
-def frame(id: str,name: str):
-    find(id)
-    import re
-    if not re.fullmatch(r'frame-\d+\.jpg',name): raise HTTPException(404)
-    path=store.MEDIA/id/name
-    if not path.is_file(): raise HTTPException(404)
-    return FileResponse(path,media_type='image/jpeg')
 
 @app.get('/api/tests/{id}/export')
 async def export(id: str):
@@ -337,15 +336,6 @@ async def live_test(id: str):
     live['summary']=network_summary(live)
     live['status']=row['status'];live['stage']=row['stage'];live['progress']=row['progress']
     return live
-
-@app.get('/api/tests/{id}/video')
-def private_video(id: str):
-    row=find(id)
-    if row['payload']['sourceType']!='upload': raise HTTPException(404,'No uploaded video')
-    paths=list((store.MEDIA/id).glob('source.*'))
-    if not paths: raise HTTPException(404,'Video unavailable')
-    path=paths[0]
-    return FileResponse(path,media_type={'.mp4':'video/mp4','.mov':'video/quicktime','.webm':'video/webm'}.get(path.suffix,'application/octet-stream'))
 
 @app.post('/api/tests/{id}/versions',status_code=202)
 @serial_submission
