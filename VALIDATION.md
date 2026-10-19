@@ -4,7 +4,8 @@ Updated: 2026-10-19. The sections below distinguish automated checks from live d
 
 ## Temporary media and free-cloud preparation — October 18
 
-- October 19: backend regression verification remains pending. Earlier runs showed failures without retained tracebacks; targeted reruns encountered very slow Neon connectivity (a separate connection probe took 32 seconds). Do not interpret unfinished runs as passes. GitHub checks use disposable PostgreSQL to verify this release independently of the remote database.
+- October 19: [GitHub release checks passed](https://github.com/Sarayu30/Ripple/actions/runs/39199133662) for commit `cedb385`: **56 Python tests passed** against disposable PostgreSQL, plus frontend build, UI, authentication, deployment security and browser checks (32 responsive checks). The deployment test now creates its artifact directory on fresh checkouts.
+- Local Neon reruns failed after a dropped connection, DNS resolution errors and an unreachable network; they are not counted as passes. The successful GitHub run verifies the application independently of that local connectivity failure. Render-to-Neon connectivity still needs the deployed health check below.
 - `npm run build`, `test:ui`, `test:auth`, `test:auth-browser`, `test:deploy`, and `test:browser` passed. UI checks cover saved upload records without requests for deleted images or video. The browser suite passed 32 responsive checks and refreshed the README screenshots; the new-input and account screenshots were visually reviewed.
 - All 10 standalone configuration/authentication unit tests passed, including production startup with a temporary directory and required origin/authentication safeguards.
 - The configured database URL, provider key, origin secret and local password were compared against tracked/new deployment files without printing their values; no matches were found. `.env` remains ignored and untracked.
