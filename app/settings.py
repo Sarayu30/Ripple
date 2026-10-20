@@ -52,7 +52,7 @@ def validate():
 
 def csp():
     from .auth import managed, public_config
-    connect = public_config()['url'] if managed() else ''
+    connect = public_config()['url'].rstrip('/') + '/' if managed() else ''
     return ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
             f"img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' {connect}; "
             "worker-src 'self' blob:; "

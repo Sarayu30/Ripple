@@ -4,6 +4,21 @@ import {JSDOM} from 'jsdom';
 import {startAuthentication} from '../frontend/auth-flow.mjs';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+test('session network failure keeps sign-in visible and workspace locked', async () => {
+  const f = fixture();
+  f.client.getSession = async () => { throw new TypeError('Failed to fetch'); };
+  let unlocked = false;
+  startAuthentication(f.client, f.page).ready.then(() => { unlocked = true; });
+  await tick();
+  assert.ok(f.page.document.querySelector('#account-form'));
+  assert.equal(f.page.document.querySelector('.sidebar').inert, true);
+  assert.match(f.page.document.querySelector('#account-message').textContent, /Unable to reach/);
+  f.click('signup');
+  assert.equal(f.field('name').disabled, false);
+  assert.equal(unlocked, false);
+  assert.equal(f.calls.length, 0);
+  f.dom.window.close();
+});
 function fixture(url = 'https://ripple.example/') {
   const dom = new JSDOM('<aside class="sidebar"></aside><div class="header-right"></div><main id="main"></main>', {url});
   const calls = [];

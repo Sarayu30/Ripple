@@ -45,8 +45,12 @@ export function startAuthentication(client, page = window) {
     const recovering = query.get('flow') === 'recovery';
     // Remove recovery credentials from the address bar/history before navigation.
     if (recovering) page.history.replaceState(null, '', '/?flow=recovery');
-    const {data, error} = await client.getSession();
-    if (error) throw Error('Sign-in could not be restored. Refresh and try again.');
+    let data, unavailable = false;
+    try {
+      const session = await client.getSession();
+      unavailable = Boolean(session.error);
+      data = unavailable ? null : session.data;
+    } catch { unavailable = true; }
     if (!data?.session || !data.user?.emailVerified || recovering) {
       document.querySelector('.sidebar').inert = true;
       const main = document.querySelector('#main');
@@ -126,6 +130,7 @@ export function startAuthentication(client, page = window) {
       document.querySelector('#account-back').onclick = () => setMode('signin');
       document.querySelector('#account-resend').onclick = () => act('resend');
       setMode(mode);
+      if (unavailable) message.textContent = 'Unable to reach the sign-in service. You can try signing in again, or refresh this page.';
       await new Promise(() => {});
     }
     initialUser = data.user.id;

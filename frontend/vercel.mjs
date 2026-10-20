@@ -17,6 +17,10 @@ export function configuration(env) {
   return {backend: backend.origin, auth: {mode: 'neon', url: authUrl}};
 }
 
+export function contentSecurityPolicy(authUrl) {
+  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' ${authUrl}/; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
+}
+
 export async function buildWeb(env = process.env, output = '.vercel/output') {
   const config = configuration(env);
   const root = path.resolve(output), assets = path.join(root, 'static', 'static');
@@ -34,7 +38,7 @@ export async function buildWeb(env = process.env, output = '.vercel/output') {
   }
   await writeFile(path.join(assets, 'auth-config.js'), 'window.RipplePublicAuth = ' + JSON.stringify(config.auth) + ';\n');
   await writeFile(path.join(root, 'static', 'index.html'), html);
-  const csp = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' ${config.auth.url}; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
+  const csp = contentSecurityPolicy(config.auth.url);
   const headers = {'Content-Security-Policy': csp, 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=31536000'};
   const routes = [
     {src: '/(.*)', headers, continue: true},

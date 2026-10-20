@@ -4,7 +4,9 @@ const path = require('path');
 const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 
+let policy;
 const server = http.createServer((req, res) => {
+  if (policy) res.setHeader('Content-Security-Policy', policy);
   const name = req.url === '/' ? 'index.html' : req.url.replace('/static/', '');
   if (!/^[a-zA-Z0-9.-]+$/.test(name)) {res.writeHead(404); res.end(); return;}
   const file = path.join(__dirname, '../app/static', name);
@@ -13,6 +15,8 @@ const server = http.createServer((req, res) => {
   res.end(fs.readFileSync(file));
 });
 (async () => {
+  const {contentSecurityPolicy} = await import('../frontend/vercel.mjs');
+  policy = contentSecurityPolicy('https://fixture.neon.tech/auth/auth');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const browser = await chromium.launch({channel: 'chrome', headless: true});
   try {
@@ -53,6 +57,7 @@ const server = http.createServer((req, res) => {
     // Optional read-only check against the configured Neon tenant: no signups,
     // emails or user mutations. It verifies the SDK's anonymous session request.
     if (process.env.RIPPLE_LIVE_AUTH_URL) {
+      policy = contentSecurityPolicy(process.env.RIPPLE_LIVE_AUTH_URL);
       await page.unroute(authUrl + '/**');
       await page.unroute('**/static/auth-config.js');
       await page.route('**/static/auth-config.js', route => route.fulfill({contentType:'text/javascript', body:'window.RipplePublicAuth = ' + JSON.stringify({mode:'neon', url:process.env.RIPPLE_LIVE_AUTH_URL})}));

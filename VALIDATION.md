@@ -1,5 +1,11 @@
 # Validation performed
 
+## Authentication startup fix — October 20
+
+- Reproduced the deployed login failure in isolated Chrome: CSP blocked Neon's `/get-session` because the allowed URL lacked the trailing slash required for endpoint paths. Both website and backend policies now allow paths beneath the configured Auth base URL.
+- Build, five authentication flow tests, two deployment tests and the bundled SDK Chrome test passed. The browser test now applies the actual generated CSP. A read-only anonymous check against the live Neon tenant displayed sign-in with the corrected policy; no accounts or emails were created.
+- Session lookup failures now preserve the login/signup form and keep the workspace locked. This does not establish that real signup, verification delivery or recovery has passed live acceptance.
+
 Updated: 2026-10-19. The sections below distinguish automated checks from live deployment acceptance.
 
 ## Temporary media and free-cloud preparation — October 18
