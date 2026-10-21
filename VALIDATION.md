@@ -1,5 +1,11 @@
 # Validation performed
 
+## Public introduction and account UX — October 21
+
+- Anonymous visitors see the feature introduction with top-right sign-in/signup actions. Account dialogs support keyboard dismissal; protected CTAs open signup and do not fetch workspace records.
+- Seven authentication tests cover public entry, rejected credentials, unverified accounts, recovery, session renewal and network failures. Build, UI and deployment tests passed. Chrome verified guest navigation at 390/768/1440px and the existing workspace suite passed 32 responsive checks. Public introduction and account screenshots were reviewed.
+- The user's reported sign-in HTTP 401 remains an external account diagnosis: no password was collected, account modified, or verification bypassed. Live email delivery and successful sign-in with that account remain unverified.
+
 ## Authentication startup fix — October 20
 
 - Reproduced the deployed login failure in isolated Chrome: CSP blocked Neon's `/get-session` because the allowed URL lacked the trailing slash required for endpoint paths. Both website and backend policies now allow paths beneath the configured Auth base URL.

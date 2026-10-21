@@ -40,11 +40,15 @@ Screenshots containing results use **clearly labeled documentation fixtures**, n
 
 ### Your account, your rehearsal space
 
+Visitors first see a public introduction explaining the audience map, version comparisons, Ask Ripple and saved research. **Sign in** and **Sign up** sit at the top right; starting a rehearsal opens the account form. Browsing this introduction does not fetch private workspace data.
+
+![Public Ripple introduction with feature navigation and top-right Sign in and Sign up](docs/screenshots/15-public-introduction.png)
+
 Hosted Ripple uses **Neon Auth** for signup, login, email verification and password recovery. Create an account, verify the code or link sent to your email, then sign in. **Forgot password?** sends a recovery link; **Send verification code** helps you finish an unverified signup. Each account can access only its own simulations, conversations and exports. Videos and extracted images are temporary: Ripple deletes them after analysis and saves the written observations and suggestions.
 
 ![Ripple account screen with email login, signup, recovery and verification controls](docs/screenshots/14-account-signin.png)
 
-The screenshot shows the real login interface using a documentation fixture, with no private account details. Local development can still use `AUTH_MODE=local`. For a public release, follow [Deploy with Vercel and Neon](DEPLOYMENT.md); creating a PostgreSQL database named `auth` alone does not activate Neon Auth.
+The screenshot shows the account dialog over the public introduction, using a documentation fixture with no private account details. Rejected credentials offer password recovery; unverified-email responses open the verification form. A successful signup request does not prove email delivery. Local development can still use `AUTH_MODE=local`. For a public release, follow [Deploy with Vercel and Neon](DEPLOYMENT.md); creating a PostgreSQL database named `auth` alone does not activate Neon Auth.
 
 ### 1. Bring your content and define your audience
 
