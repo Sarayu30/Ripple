@@ -1,10 +1,13 @@
 <!doctype html> 
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" class="app-booting">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="See how your audience might react before you publish. Explore AI audience reactions, test creative edits, and understand the evidence with Ripple.">
 <title>Ripple — Audience intelligence</title>
+<style>
+#startup-screen{display:none}html.app-booting .sidebar,html.app-booting .shell,html.app-booting .auth-signout{display:none!important}html.app-booting #startup-screen{display:grid;place-content:center;gap:18px;min-height:100dvh;padding:30px;text-align:center;background:radial-gradient(ellipse at top right,#654064,#241c33 65%);color:#fff1e7;font:16px system-ui,sans-serif}#startup-screen strong{font-size:44px;letter-spacing:-2px}#startup-screen p{color:#e2cedf;margin:0}#startup-screen a{color:#ffc0ad}
+</style>
 <script src="/static/auth-config.js" defer></script>
 <script src="/static/auth.js" defer></script>
 <link rel="stylesheet" href="/static/styles.css">
@@ -22,6 +25,7 @@
 </head> 
 
 <body>
+<div id="startup-screen" role="status" aria-live="polite"><strong>◎ ripple</strong><p>Getting your creative space ready…</p><noscript>Enable JavaScript to use Ripple.</noscript></div>
 <a class="skip-link" href="#main">Skip to content</a>
 <aside class="sidebar">
 <a class="brand" href="#home" data-home aria-label="Ripple home"><span class="logo">◎</span> ripple<span class="brand-dot">.</span></a>

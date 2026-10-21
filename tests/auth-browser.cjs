@@ -26,10 +26,14 @@ const server = http.createServer((req, res) => {
     const user = {id:'00000000-0000-4000-8000-000000000001', name:'Documentation account', email:'fixture@example.com', emailVerified:true, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
     const jwt = 'header.' + Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+900})).toString('base64url') + '.fixture';
     let signedIn = true, minted = 0, synchronized = 0, protectedReads = 0;
+    let releaseSession;
+    const sessionGate = new Promise(resolve => { releaseSession = resolve; });
+    let firstSession = true;
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.route('**/static/auth-config.js', route => route.fulfill({contentType:'text/javascript', body:'window.RipplePublicAuth = ' + JSON.stringify({mode:'neon', url:authUrl})}));
     await page.route(authUrl + '/**', async route => {
       const req = route.request(), url = new URL(req.url());
+      if (url.pathname.endsWith('/get-session') && firstSession) { firstSession = false; await sessionGate; }
       let body = null;
       if (url.pathname.endsWith('/get-session') && signedIn) body = {user, session:{id:'fixture-session', userId:user.id, token:'opaque-cookie', expiresAt:new Date(Date.now()+86400000).toISOString(), createdAt:user.createdAt, updatedAt:user.updatedAt}};
       else if (url.pathname.endsWith('/token')) {minted++; body = {token:jwt};}
@@ -42,9 +46,18 @@ const server = http.createServer((req, res) => {
       if (url.pathname === '/api/auth/session') {assert.equal(route.request().headers().authorization, 'Bearer ' + jwt); synchronized++;}
       await route.fulfill({contentType:'application/json', body: JSON.stringify(url.pathname === '/api/tests' ? [] : url.pathname === '/api/config' ? {providers:{groq:true}, maxUploadMB:100, maxDuration:180} : {})});
     });
-    await page.goto(base);
+    await page.goto(base, {waitUntil:'domcontentloaded'});
+    assert.equal(await page.locator('#startup-screen').isVisible(), true);
+    assert.equal(await page.locator('.sidebar').isVisible(), false);
+    assert.equal(await page.locator('.shell').isVisible(), false);
+    releaseSession();
     await page.evaluate(() => window.RippleAuth.ready);
     assert.equal(minted, 1); assert.equal(synchronized, 1);
+    await page.locator('#hero-title').waitFor();
+    assert.equal(await page.locator('#startup-screen').isVisible(), false);
+    await page.locator('.r-closing [data-go="new"]').click();
+    await page.locator('#testForm').waitFor();
+    assert.equal(await page.locator('#account-dialog').count(), 0);
     await page.getByRole('button', {name:'Sign out', exact:true}).click();
     await page.locator('#hero-title').waitFor();
     assert.equal(await page.locator('#account-dialog').isVisible(), false);
@@ -62,6 +75,15 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('[name=name]').isVisible(), true);
     await page.keyboard.press('Escape');
     assert.equal(protectedReads, readsBefore);
+    await page.locator('.r-closing [data-go="new"]').click();
+    assert.equal(await page.locator('#account-dialog').isVisible(), true);
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.navigate('new'));
+    assert.equal(await page.locator('#account-dialog').isVisible(), true);
+    assert.equal(await page.locator('.sidebar').isVisible(), false);
+    assert.equal(await page.locator('#testForm').count(), 0);
+    assert.equal(protectedReads, readsBefore);
+    await page.keyboard.press('Escape');
     await page.getByRole('button', {name:'Sign up', exact:true}).click();
     assert.equal(await page.locator('[name=name]').isVisible(), true);
     await page.keyboard.press('Escape');
@@ -75,6 +97,13 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({width:390,height:844});
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
+    signedIn = true;
+    await page.route(base + '/api/config', route => route.fulfill({status:503, contentType:'application/json',body:JSON.stringify({detail:'Backend temporarily unavailable'})}));
+    await page.goto(base);
+    await page.locator('#main .warning.error').waitFor();
+    assert.match(await page.locator('#main').innerText(), /Backend temporarily unavailable/);
+    assert.equal(await page.locator('#startup-screen').isVisible(), false);
+    await page.unroute(base + '/api/config');
     // Optional read-only check against the configured Neon tenant: no signups,
     // emails or user mutations. It verifies the SDK's anonymous session request.
     if (process.env.RIPPLE_LIVE_AUTH_URL) {

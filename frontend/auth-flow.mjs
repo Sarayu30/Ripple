@@ -160,6 +160,7 @@ export function startAuthentication(client, page = window) {
       dialog.addEventListener('close', () => { field('password').value = ''; field('code').value = ''; });
       const renderPublicHome = () => page.RippleExperience?.landing(document.querySelector('#public-home'));
       renderPublicHome();
+      document.documentElement.classList.remove('app-booting');
       page.addEventListener('ripple-experience-ready', renderPublicHome, {once: true});
       if (recovering || mode === 'verify') openAccount(mode);
       if (unavailable) message.textContent = 'Unable to reach the sign-in service. You can try signing in again, or refresh this page.';
