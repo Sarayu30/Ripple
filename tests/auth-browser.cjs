@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
     const authUrl = 'https://fixture.neon.tech/auth/auth';
     const user = {id:'00000000-0000-4000-8000-000000000001', name:'Documentation account', email:'fixture@example.com', emailVerified:true, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
     const jwt = 'header.' + Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+900})).toString('base64url') + '.fixture';
-    let signedIn = true, minted = 0, synchronized = 0;
+    let signedIn = true, minted = 0, synchronized = 0, protectedReads = 0;
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.route('**/static/auth-config.js', route => route.fulfill({contentType:'text/javascript', body:'window.RipplePublicAuth = ' + JSON.stringify({mode:'neon', url:authUrl})}));
     await page.route(authUrl + '/**', async route => {
@@ -38,6 +38,7 @@ const server = http.createServer((req, res) => {
     });
     await page.route(base + '/api/**', async route => {
       const url = new URL(route.request().url());
+      if (['/api/tests','/api/config'].includes(url.pathname)) protectedReads++;
       if (url.pathname === '/api/auth/session') {assert.equal(route.request().headers().authorization, 'Bearer ' + jwt); synchronized++;}
       await route.fulfill({contentType:'application/json', body: JSON.stringify(url.pathname === '/api/tests' ? [] : url.pathname === '/api/config' ? {providers:{groq:true}, maxUploadMB:100, maxDuration:180} : {})});
     });
@@ -45,7 +46,27 @@ const server = http.createServer((req, res) => {
     await page.evaluate(() => window.RippleAuth.ready);
     assert.equal(minted, 1); assert.equal(synchronized, 1);
     await page.getByRole('button', {name:'Sign out', exact:true}).click();
-    await page.locator('#account-form').waitFor();
+    await page.locator('#hero-title').waitFor();
+    assert.equal(await page.locator('#account-dialog').isVisible(), false);
+    assert.equal(await page.locator('.sidebar').isVisible(), false);
+    const readsBefore = protectedReads;
+    fs.mkdirSync('docs/screenshots', {recursive:true});
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({path:'docs/screenshots/15-public-introduction.png', animations:'disabled'});
+    for (const width of [390,768,1440]) {
+      await page.setViewportSize({width,height:900});
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      assert(await page.getByRole('button', {name:'Sign up', exact:true}).isVisible());
+    }
+    await page.getByRole('button', {name:'Simulate your audience', exact:false}).first().click();
+    assert.equal(await page.locator('[name=name]').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(protectedReads, readsBefore);
+    await page.getByRole('button', {name:'Sign up', exact:true}).click();
+    assert.equal(await page.locator('[name=name]').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#account-dialog').isVisible(), false);
+    await page.getByRole('button', {name:'Sign in', exact:true}).click();
     await page.evaluate(() => document.fonts.ready);
     fs.mkdirSync('docs/screenshots', {recursive:true});
     await page.screenshot({path:'docs/screenshots/14-account-signin.png', animations:'disabled'});
@@ -62,6 +83,7 @@ const server = http.createServer((req, res) => {
       await page.unroute('**/static/auth-config.js');
       await page.route('**/static/auth-config.js', route => route.fulfill({contentType:'text/javascript', body:'window.RipplePublicAuth = ' + JSON.stringify({mode:'neon', url:process.env.RIPPLE_LIVE_AUTH_URL})}));
       await page.goto(base);
+      await page.getByRole('button', {name:'Sign in', exact:true}).click();
       await page.locator('#account-form').waitFor({timeout:30000});
       assert.deepEqual(errors, []);
       console.log('PASS: live Neon anonymous session and login screen (no accounts created).');

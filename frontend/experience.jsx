@@ -10,7 +10,14 @@ import './page-color.css';
 
 const roots = new Map();
 let pendingDraft = null;
-const go = page => window.navigate(page);
+const go = page => {
+  if (window.RippleGuest) {
+    if (page === 'home') window.scrollTo({top:0, behavior:'smooth'});
+    else window.RippleGuest.open('signup');
+    return new Promise(() => {}); // Never run protected follow-ups while signed out.
+  }
+  return window.navigate(page);
+};
 const ease = [0.22, 1, 0.36, 1];
 
 function mount(host, component) {
@@ -98,11 +105,16 @@ function Landing() {
   const [paused, setPaused] = useState(false);
   const reduced = useReducedMotion();
   return <div className={`r-experience ${paused || reduced ? 'motion-paused' : ''}`}>
-    <nav className="r-nav" aria-label="Introduction"><Brand/><div className="r-nav-links"><a href="#how-it-works">The audience lens</a><a href="#the-process">How it works</a><a href="#built-for">Made for you</a></div><Pill secondary onClick={()=>go('studio')} data-go="studio">Open Studio <ArrowUpRight size={16}/></Pill></nav>
+    <nav className="r-nav" aria-label="Introduction"><Brand/><div className="r-nav-links"><a href="#how-it-works">The audience lens</a><a href="#the-process">How it works</a><a href="#built-for">Made for you</a></div>{window.RippleGuest ? <div className="r-account-actions"><Pill secondary onClick={()=>window.RippleGuest.open('signin')}>Sign in</Pill><Pill onClick={()=>window.RippleGuest.open('signup')}>Sign up <ArrowUpRight size={16}/></Pill></div> : <Pill secondary onClick={()=>go('studio')} data-go="studio">Open Studio <ArrowUpRight size={16}/></Pill>}</nav>
     <section className="r-hero"><Reveal><span className="r-kicker pill-kicker"><span className="r-live-dot"/>YOUR CONTENT. A LITTLE MORE PERSPECTIVE.</span><h1 id="hero-title">Every post starts<br/>a ripple.<span className="hero-gradient"> Make yours land.</span></h1></Reveal><Reveal className="r-hero-aside" delay={.15}><p>Meet the reactions before the real world does. An AI audience rehearsal for your next Reel, launch, or big idea.</p><Pill onClick={()=>go('new')} data-go="new">Simulate your audience <ArrowUpRight size={18}/></Pill><span className="hero-aside-note">Your creative instinct. A broader point of view.</span></Reveal><button className="r-motion-toggle" onClick={()=>setPaused(!paused)} aria-pressed={paused} aria-label={paused?'Play ambient animation':'Pause ambient animation'}>{paused?<Play size={13}/>:<Pause size={13}/>}<span>{paused?'Play motion':'Pause motion'}</span></button></section>
     <Rehearsal paused={paused}/>
     <div className="r-process-strip"><span>THINK BEFORE YOU PUBLISH.</span><span><Film size={15}/>Your content <ChevronRight size={14}/><UsersRound size={15}/>AI audience <ChevronRight size={14}/><MessageCircle size={15}/>Honest perspectives <ChevronRight size={14}/><Sparkles size={15}/>Your next edit</span></div>
     <PerspectiveSection/>
+    <section className="r-built-for" id="research-tools"><Reveal><span className="r-kicker">MORE THAN A SCORE</span><h2>Turn the reactions<br/>into your <em>next move.</em></h2></Reveal><div className="r-personas">{[
+      ['Compare versions','Try a different hook, caption or audience. Compare saved versions side by side and see what changed.','01'],
+      ['Ask Ripple','Ask why a viewer might scroll, what feels unclear, or which edit to try. Answers refer back to your saved evidence.','02'],
+      ['Your creative library','Return to your simulations, keep suggested hooks and captions, and export a report to share with your team.','03'],
+    ].map(([title,copy,num])=><article key={num}><span>{num} /</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
     <section className="r-process-section" id="the-process"><Reveal className="process-intro"><span className="r-kicker">A REHEARSAL, NOT A CRYSTAL BALL.</span><h2>From “will this work?”<br/>to “here’s what <em>I’ll try.”</em></h2><p>Keep your idea. Question the opening. Make one considered change at a time.</p><button className="r-text-button" onClick={()=>go('new')}>Start your first rehearsal <ArrowUpRight size={18}/></button></Reveal><div className="r-process-list">{[
       ['01','Bring the rough cut.','Upload your video or supply a link and transcript. Tell Ripple who should care and what you want them to remember.',Film],
       ['02','Listen to the differences.','Explore an interactive 2D or 3D audience map. Read individual reactions, replay the analysis, and question the evidence.',UsersRound],
@@ -156,3 +168,4 @@ window.RippleExperience={
   studio(row){const host=document.createElement('div');host.id='contentRibbon';document.querySelector('#studioKpis')?.before(host);mount(host,<ContentRibbon row={row}/>);},
   icons:installIcons,
 };
+window.dispatchEvent(new Event('ripple-experience-ready'));

@@ -55,7 +55,8 @@ export function startAuthentication(client, page = window) {
       document.querySelector('.sidebar').inert = true;
       const main = document.querySelector('#main');
       let mode = recovering ? 'recover' : data?.user && !data.user.emailVerified ? 'verify' : 'signin';
-      main.innerHTML = `<section class="card auth-card"><div class="eyebrow">YOUR PRIVATE RIPPLE WORKSPACE</div>
+      document.body.classList.add('is-landing');
+      main.innerHTML = `<div id="public-home"><h1>See how your content could land.</h1><p>Explore audience reactions, compare creative edits, and ask questions grounded in your saved analysis.</p></div><dialog id="account-dialog" aria-labelledby="account-title"><button class="btn account-close" type="button" aria-label="Close account form">Close ×</button><section class="card auth-card"><div class="eyebrow">YOUR PRIVATE RIPPLE WORKSPACE</div>
         <h1 id="account-title">Explore your next idea.</h1>
         <p>Rehearse your content with an AI audience. Your analysis, suggestions and conversations stay in your account. Uploaded videos are deleted after analysis.</p>
         <form id="account-form">
@@ -69,7 +70,8 @@ export function startAuthentication(client, page = window) {
         <button class="btn" type="button" id="account-reset">Forgot password?</button>
         <button class="btn" type="button" id="account-resend" hidden>Send verification code</button>
         <button class="btn" type="button" id="account-back" hidden>Back to sign in</button>
-        </div></form></section>`;
+        </div></form></section></dialog>`;
+      const dialog = document.querySelector('#account-dialog');
       const form = document.querySelector('#account-form');
       const message = document.querySelector('#account-message');
       const field = name => form.elements.namedItem(name);
@@ -119,9 +121,27 @@ export function startAuthentication(client, page = window) {
             setMode('signin');
             message.textContent = kind === 'verify' ? 'Email verified. You can now sign in.' : 'Password updated. Sign in with your new password.';
           } else message.textContent = 'If an account matches, a recovery email will arrive shortly.';
-        } catch {
-          message.textContent = kind === 'recover' ? 'This recovery link may have expired. Go back and request a new one.'
-            : 'Unable to complete this request. Check your details, verify your email, or try password recovery.';
+        } catch (error) {
+          const code = error?.code;
+          const messages = {
+            INVALID_EMAIL_OR_PASSWORD: 'The email and password do not match an account. Use the same email you registered with, or choose Forgot password.',
+            EMAIL_NOT_VERIFIED: 'Verify your email before signing in. Enter your code below, or choose Send verification code.',
+            INVALID_CALLBACK_URL: 'This website address is not approved for sign-in. Open the published Ripple website or contact support.',
+            INVALID_ORIGIN: 'This website address is not approved for sign-in. Open the published Ripple website or contact support.',
+            PASSWORD_TOO_SHORT: 'Use a password with at least 12 characters.',
+            PASSWORD_TOO_LONG: 'This password exceeds the account service limit. Choose a shorter password.',
+            USER_ALREADY_EXISTS: 'Try signing in or recovering your password for this email.',
+            USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Try signing in or recovering your password for this email.',
+            INVALID_OTP: 'That verification code is invalid or expired. Request a new code and try again.',
+            OTP_EXPIRED: 'That verification code has expired. Request a new code.',
+            SIGNUP_DISABLED: 'New account registration is currently unavailable. Contact the workspace operator.',
+          };
+          if (code === 'EMAIL_NOT_VERIFIED') { field('password').value = ''; setMode('verify'); }
+          message.textContent = messages[code] || (error?.status === 429 ? 'Too many attempts. Please wait a few minutes before trying again.'
+            : error?.status === 401 ? messages.INVALID_EMAIL_OR_PASSWORD
+            : error instanceof TypeError ? 'The account service could not be reached. Check your connection and try again.'
+            : kind === 'recover' ? 'This recovery link may have expired. Go back and request a new one.'
+            : 'The account service could not complete this request. Please try again shortly.');
         } finally { form.querySelectorAll('button').forEach(button => button.disabled = false); }
       };
       form.onsubmit = event => { event.preventDefault(); act(mode); };
@@ -130,6 +150,18 @@ export function startAuthentication(client, page = window) {
       document.querySelector('#account-back').onclick = () => setMode('signin');
       document.querySelector('#account-resend').onclick = () => act('resend');
       setMode(mode);
+      const openAccount = next => {
+        setMode(next);
+        if (!dialog.open) dialog.showModal();
+        field(next === 'recover' ? 'password' : next === 'signup' ? 'name' : 'email').focus();
+      };
+      page.RippleGuest = {open: openAccount};
+      document.querySelector('.account-close').onclick = () => dialog.close();
+      dialog.addEventListener('close', () => { field('password').value = ''; field('code').value = ''; });
+      const renderPublicHome = () => page.RippleExperience?.landing(document.querySelector('#public-home'));
+      renderPublicHome();
+      page.addEventListener('ripple-experience-ready', renderPublicHome, {once: true});
+      if (recovering || mode === 'verify') openAccount(mode);
       if (unavailable) message.textContent = 'Unable to reach the sign-in service. You can try signing in again, or refresh this page.';
       await new Promise(() => {});
     }

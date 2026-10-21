@@ -26,3 +26,10 @@ body.is-landing{background:#faf8f5;color:#292427}body.is-landing main{max-width:
 .auth-card input:focus{outline:2px solid #f5b6a4;outline-offset:3px}.auth-card .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .auth-card .btn{color:#f4dfeb;background:#ffffff0b;border-color:#8c748b;min-height:44px}.auth-card .btn.primary{background:#f7b5a1;color:#302136;border-color:#f7b5a1}
 .auth-card [role=status]{color:#f9d5ab;line-height:1.6;margin-top:16px}.auth-signout{position:fixed;right:20px;bottom:20px;z-index:120;box-shadow:0 4px 20px #17102030;min-height:44px}
+.r-account-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+#account-dialog{width:min(680px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid #806382;border-radius:24px;background:#252036;color:#fff1e7;box-shadow:0 30px 120px #140f3866;overflow:auto}
+#account-dialog::backdrop{background:#171322b8;backdrop-filter:blur(8px)}
+#account-dialog .auth-card{margin:0;max-width:none;border:0!important;border-radius:0;padding:56px 36px 32px!important}
+#account-dialog .auth-card h1{font-size:34px;letter-spacing:-1px}
+#account-dialog .account-close{position:absolute;right:14px;top:12px;z-index:2;color:#fff1e7;background:#ffffff12;border-color:#8c748b}
+@media(max-width:600px){.r-account-actions{gap:6px}.r-account-actions .r-pill{padding:10px 12px;font-size:11px}#account-dialog .auth-card{padding:60px 22px 26px!important}#account-dialog .auth-card h1{font-size:28px}}

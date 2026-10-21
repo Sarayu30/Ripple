@@ -21,6 +21,8 @@ test('session network failure keeps sign-in visible and workspace locked', async
 });
 function fixture(url = 'https://ripple.example/') {
   const dom = new JSDOM('<aside class="sidebar"></aside><div class="header-right"></div><main id="main"></main>', {url});
+  dom.window.HTMLDialogElement.prototype.showModal = function() { this.open = true; };
+  dom.window.HTMLDialogElement.prototype.close = function() { this.open = false; };
   const calls = [];
   const ok = name => async args => { calls.push([name, args]); return {data: {}, error: null}; };
   const client = {getSession: async () => ({data: null}), signUp: {email: ok('signup')}, signIn: {email: ok('signin')},
@@ -45,6 +47,34 @@ test('signup verifies email and recovery needs only an email address', async () 
   f.click('submit'); await tick();
   assert.deepEqual(f.calls[2], ['requestReset', {email: 'test@example.com', redirectTo: 'https://ripple.example/?flow=recovery'}]);
   f.dom.window.close();
+});
+
+test('public landing keeps account form closed until requested', async () => {
+  const f = fixture(); startAuthentication(f.client, f.page); await tick();
+  assert.equal(f.page.document.querySelector('#account-dialog').open, false);
+  assert.ok(f.page.document.querySelector('#public-home'));
+  f.page.RippleGuest.open('signup');
+  assert.equal(f.page.document.querySelector('#account-dialog').open, true);
+  assert.equal(f.field('name').disabled, false);
+  assert.equal(f.calls.length, 0);
+  f.dom.window.close();
+});
+
+test('sign-in distinguishes rejected credentials from unverified email', async () => {
+  for (const code of ['INVALID_EMAIL_OR_PASSWORD', 'EMAIL_NOT_VERIFIED']) {
+    const f = fixture();
+    f.client.signIn.email = async () => ({error:{code,status:code==='EMAIL_NOT_VERIFIED'?403:401,message:'private provider details'}});
+    startAuthentication(f.client, f.page); await tick();
+    f.page.RippleGuest.open('signin');
+    f.field('email').value='fixture@example.com'; f.field('password').value='fixture-password';
+    f.click('submit'); await tick();
+    const message=f.page.document.querySelector('#account-message').textContent;
+    assert.match(message, code==='EMAIL_NOT_VERIFIED' ? /Verify your email/ : /email and password do not match/);
+    assert.ok(!message.includes('private provider details'));
+    assert.equal(f.field('code').disabled, code!=='EMAIL_NOT_VERIFIED');
+    if(code==='EMAIL_NOT_VERIFIED') assert.equal(f.field('password').value,'');
+    f.dom.window.close();
+  }
 });
 
 test('recovery removes token from address bar and submits it only to auth', async () => {
